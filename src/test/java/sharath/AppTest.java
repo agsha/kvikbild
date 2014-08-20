@@ -10,14 +10,9 @@ import junit.framework.TestSuite;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
-import java.util.AbstractSet;
-import java.util.Iterator;
 
 
 /**
@@ -51,7 +46,7 @@ public class AppTest
      * Rigourous Test :-)
      */
     public void testApp() throws IOException {
-        App app = injector.getInstance(AppFactory.class).create(new String[0]);
+        App app = injector.getInstance(App.AppFactory.class).create(new String[0]);
         app.start();
         Builder builder = injector.getInstance(Builder.class);
         builder.build();

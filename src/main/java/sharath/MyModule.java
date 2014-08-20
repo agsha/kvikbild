@@ -7,12 +7,10 @@ import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import org.apache.log4j.Logger;
-import sharath.External;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.Paths;
 
 /**
  * @author sgururaj
@@ -20,8 +18,9 @@ import java.nio.file.Paths;
 public class MyModule extends AbstractModule {
     @Override
     protected void configure() {
-        install(new FactoryModuleBuilder().build(AppFactory.class));
-        bindConstant().annotatedWith(Names.named("cwd")).to("/data00/trunk/cim");
+        install(new FactoryModuleBuilder().build(App.AppFactory.class));
+        bindConstant().annotatedWith(Names.named("cwd")).to("/Users/sgururaj/projects/cim");
+        bind(String.class).annotatedWith(Names.named("javacOptions")).toProvider(JavacOptionsProvider.class);
     }
 }
 
@@ -42,7 +41,4 @@ class JavacOptionsProvider implements Provider<String> {
             throw new RuntimeException(e);
         }
     }
-}
-interface AppFactory {
-    public App create(String[] args);
 }
