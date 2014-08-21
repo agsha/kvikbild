@@ -5,12 +5,18 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import org.apache.log4j.Logger;
 
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * @author sgururaj
@@ -18,19 +24,23 @@ import java.util.HashMap;
 public class Builder {
     private Graph graph;
     private String cwd;
-    private String javacOptions;
+    private List<String> javacOptions;
     private External ext;
+    private final JavaCompiler jc;
+    private final StandardJavaFileManager fm;
     private static final Logger log = Logger.getLogger(Builder.class);
 
     @Inject
     Builder(Graph graph, @Named("cwd") String cwd,
-            @Named("javacOptions") String javacOptions,
-            External ext) {
+            @Named("javacOptions") List<String> javacOptions,
+            External ext, JavaCompiler jc, StandardJavaFileManager fm) {
 
         this.graph = graph;
         this.cwd = cwd;
         this.javacOptions = javacOptions;
         this.ext = ext;
+        this.jc = jc;
+        this.fm = fm;
     }
 
     public void build() throws IOException {
@@ -54,7 +64,7 @@ public class Builder {
             });
 
         //now compute the list of dirtyJavaFiles by comparing modified times for class files.
-        final ArrayList<String> dirtyJavaFiles = new ArrayList<>();
+        final ArrayList<File> dirtyJavaFiles = new ArrayList<>();
         ext.walkFileTree(ImmutableList.of(src.resolve("main/java"), src.resolve("test/java")), new SimpleFileVisitor<Path>() {
             PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
             @Override
@@ -65,14 +75,26 @@ public class Builder {
                     //log.error(canonical);
                     FileTime classTime = modifiedTimes.get(canonical);
                     if (classTime == null||attrs.lastModifiedTime().compareTo(classTime) > 0) {
-                        dirtyJavaFiles.add(canonical);
+                        dirtyJavaFiles.add(new File(file.toString()));
                     }
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
 
+        log.info("Compiling the following files");
+        for (File file : dirtyJavaFiles) {
+            log.info(file.getAbsolutePath());
+        }
+
         //now start compiling all the dirty java files.
+        Iterable<? extends JavaFileObject> sources = fm.getJavaFileObjectsFromFiles(dirtyJavaFiles);
+        Boolean success = jc.getTask(null, fm, null, javacOptions, null, sources).call();
+        if(success) {
+            log.info("Successfully compiled.");
+        } else {
+            log.error("Compilation failed!");
+        }
 
     }
 }
