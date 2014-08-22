@@ -48,6 +48,7 @@ public class GraphFlusher extends Thread{
         for (Map.Entry<Path, Node> entry : graph.nodes.entrySet()) {
             Node value = entry.getValue();
             StringBuffer sb = new StringBuffer();
+            if(value.out.size()==0) continue;
             for (Node node : value.out) {
                 sb.append(",");
                 sb.append(node.path.toString());
@@ -62,5 +63,6 @@ public class GraphFlusher extends Thread{
         }
         ps.executeBatch();
         graph.setDirty(false);
+        log.info("flushed graph to disk.");
     }
 }

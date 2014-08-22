@@ -31,12 +31,13 @@ public class Builder extends AbstractHandler {
     private final JavaCompiler jc;
     private final StandardJavaFileManager fm;
     private DependencyVisitor visitor;
+    private Utils utils;
     private static final Logger log = Logger.getLogger(Builder.class);
 
     @Inject
     Builder(Graph graph, @Named("cwd") String cwd,
             @Named("javacOptions") List<String> javacOptions,
-            External ext, JavaCompiler jc, StandardJavaFileManager fm, DependencyVisitor visitor) {
+            External ext, JavaCompiler jc, StandardJavaFileManager fm, DependencyVisitor visitor, Utils utils) {
 
         this.graph = graph;
         this.cwd = cwd;
@@ -45,6 +46,7 @@ public class Builder extends AbstractHandler {
         this.jc = jc;
         this.fm = fm;
         this.visitor = visitor;
+        this.utils = utils;
     }
 
     public void build() throws IOException {
@@ -59,9 +61,7 @@ public class Builder extends AbstractHandler {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     if (matcher.matches(file)) {
-                        String filename = file.subpath(target.getNameCount() + 1, file.getNameCount()).toString();
-                        String canonical = filename.substring(0, filename.length() - 6);
-                        modifiedTimes.put(canonical, attrs.lastModifiedTime());
+                        modifiedTimes.put(file.toString(), attrs.lastModifiedTime());
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -74,10 +74,8 @@ public class Builder extends AbstractHandler {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (matcher.matches(file)) {
-                    String filename = file.subpath(target.getNameCount() + 2, file.getNameCount()).toString();
-                    String canonical = filename.substring(0, filename.length() - 5);
-                    //log.error(canonical);
-                    FileTime classTime = modifiedTimes.get(canonical);
+                    String classpath = utils.toClass(file);
+                    FileTime classTime = modifiedTimes.get(classpath);
                     if (classTime == null||attrs.lastModifiedTime().compareTo(classTime) > 0) {
                         dirtyJavaFiles.add(new File(file.toString()));
                     }

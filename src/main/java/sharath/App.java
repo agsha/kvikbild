@@ -41,9 +41,10 @@ public class App
     private DependencyVisitor visitor;
     private GraphFlusher flusher;
     private Server server;
+    private Utils utils;
 
     @Inject
-    public App(@Assisted String[] args,  External ext, @Named("cwd") String cwd, Graph graph, Connection c, DependencyVisitor visitor, GraphFlusher flusher, Server server) {
+    public App(@Assisted String[] args,  External ext, @Named("cwd") String cwd, Graph graph, Connection c, DependencyVisitor visitor, GraphFlusher flusher, Server server, Utils utils) {
 
         this.args = args;
         this.ext = ext;
@@ -53,6 +54,7 @@ public class App
         this.visitor = visitor;
         this.flusher = flusher;
         this.server = server;
+        this.utils = utils;
     }
 
     public static void main( String[] args ) throws Exception {
@@ -81,23 +83,22 @@ public class App
 
         ext.walkFileTree(ImmutableList.of(classesDir, testClasses), new SimpleFileVisitor<Path>() {
             PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
+
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (! matcher.matches(file)) return FileVisitResult.CONTINUE;
+                if (!matcher.matches(file)) return FileVisitResult.CONTINUE;
                 String classpath = file.toString();
                 // when should the graph be updated
                 // when the info in the graph does not have the latest class information.
                 // or if this classfile has no corresponding java file
-                if(graph.nodes.containsKey(file) && graph.nodes.get(file).classModTime.compareTo(attrs.lastModifiedTime())>0) return FileVisitResult.CONTINUE;
+                if (graph.nodes.containsKey(file) && graph.nodes.get(file).classModTime.compareTo(attrs.lastModifiedTime()) > 0)
+                    return FileVisitResult.CONTINUE;
 
-                //if no corresponding javafiles exist then continue
-                //cwd/app/core/target/classes(test-classes)
-                //cwd/app/core/src/main(test)/java
-                Paths.get(cwd).resolve()
-                file.subpath(Paths.get(cwd).getNameCount()+1, file.getNameCount())
-                Path javaFile = Paths.get(classpath.substring(0, classpath.length()-5)+"java");
+
+
+                Path javaFile = utils.toJavap(file);
                 log.info(javaFile);
-                if(!Files.isRegularFile(javaFile)) return FileVisitResult.CONTINUE;
+                if (!Files.isRegularFile(javaFile)) return FileVisitResult.CONTINUE;
 
                 Set<Path> deps = visitor.getDependencies(Files.newInputStream(file));
                 log.info(file);
