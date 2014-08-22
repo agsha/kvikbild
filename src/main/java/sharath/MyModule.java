@@ -6,6 +6,7 @@ import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import org.apache.log4j.Logger;
+import org.eclipse.jetty.server.Server;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
@@ -13,6 +14,7 @@ import javax.tools.ToolProvider;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,11 +22,14 @@ import java.util.List;
  * @author sgururaj
  */
 public class MyModule extends AbstractModule {
+    private static final Logger log = Logger.getLogger(MyModule.class);
+
     @Override
     protected void configure() {
         install(new FactoryModuleBuilder().build(App.AppFactory.class));
         bindConstant().annotatedWith(Names.named("cwd")).to("/Users/sgururaj/projects/cim");
         bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacOptions")).toProvider(JavacOptionsProvider.class).in(Singleton.class);
+        bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
     }
 
     @Provides
@@ -38,6 +43,46 @@ public class MyModule extends AbstractModule {
     StandardJavaFileManager provideStandardJavaFileManager(JavaCompiler jc) {
         return jc.getStandardFileManager(null, null, null);
     }
+
+    @Provides
+    @Singleton
+    public Server getJettyServer(@Named("port") int port, Builder builder) {
+        Server server = new Server(port);
+        server.setHandler(builder);
+        return server;
+    }
+    @Provides
+    @Singleton
+    Connection getConnection() {
+        Connection c ;
+        ResultSet rs = null;
+        PreparedStatement ps = null;
+        try {
+            Class.forName("org.sqlite.JDBC");
+            c = DriverManager.getConnection("jdbc:sqlite:database.db");
+            log.info("Opened database successfully");
+            ps = c.prepareStatement("SELECT name FROM sqlite_master WHERE type='table';");
+            rs = ps.executeQuery();
+            if(rs.next()) {
+                if(rs.getString(1).equals("dependency"))
+                    return c;
+            }
+            new CreateSchema().create(c);
+            return c;
+        } catch ( Exception e ) {
+            log.error( "unable to create jdbc connection", e );
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                ps.close();
+                rs.close();
+            } catch (SQLException e) {
+                log.error("error while closing resultset and preparedstatement", e);
+                throw new RuntimeException(e);
+            }
+
+        }
+    }
 }
 
 class JavacOptionsProvider implements Provider<List<String>> {
@@ -46,6 +91,7 @@ class JavacOptionsProvider implements Provider<List<String>> {
     private static final Logger log = Logger.getLogger(JavacOptionsProvider.class);
 
 
+    @Inject
     JavacOptionsProvider(@Named("cwd")  String cwd) {
         this.cwd = cwd;
     }

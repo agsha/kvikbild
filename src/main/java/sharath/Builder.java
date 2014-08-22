@@ -4,7 +4,12 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import org.apache.log4j.Logger;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
@@ -13,27 +18,25 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author sgururaj
  */
-public class Builder {
+public class Builder extends AbstractHandler {
     private Graph graph;
     private String cwd;
     private List<String> javacOptions;
     private External ext;
     private final JavaCompiler jc;
     private final StandardJavaFileManager fm;
+    private DependencyVisitor visitor;
     private static final Logger log = Logger.getLogger(Builder.class);
 
     @Inject
     Builder(Graph graph, @Named("cwd") String cwd,
             @Named("javacOptions") List<String> javacOptions,
-            External ext, JavaCompiler jc, StandardJavaFileManager fm) {
+            External ext, JavaCompiler jc, StandardJavaFileManager fm, DependencyVisitor visitor) {
 
         this.graph = graph;
         this.cwd = cwd;
@@ -41,6 +44,7 @@ public class Builder {
         this.ext = ext;
         this.jc = jc;
         this.fm = fm;
+        this.visitor = visitor;
     }
 
     public void build() throws IOException {
@@ -95,6 +99,24 @@ public class Builder {
         } else {
             log.error("Compilation failed!");
         }
+
+        for (File file : dirtyJavaFiles) {
+            String javapath = file.getAbsolutePath();
+            String classpath = javapath.substring(0, javapath.length()-4)+"class";
+            Set<Path> deps = visitor.getDependencies(Files.newInputStream(Paths.get(classpath)));
+            graph.update(Paths.get(classpath), deps, FileTime.fromMillis(System.currentTimeMillis()));
+        }
+        log.info("updated dependencies!");
+    }
+
+    @Override
+    public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
+        log.info("Request from client: "+s);
+        if(s.equals("/compile")) {
+            build();
+            return;
+        }
+        log.error("Unknown request from client: "+s);
 
     }
 }

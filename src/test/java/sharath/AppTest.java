@@ -45,11 +45,17 @@ public class AppTest
     /**
      * Rigourous Test :-)
      */
-    public void testApp() throws IOException {
+    public void testApp() throws Exception {
         App app = injector.getInstance(App.AppFactory.class).create(new String[0]);
         app.start();
         Builder builder = injector.getInstance(Builder.class);
         builder.build();
+    }
+
+    public void testT() throws IOException {
+        DependencyVisitor visitor = injector.getInstance(DependencyVisitor.class);
+        String cwd = injector.getInstance(Key.get(String.class, Names.named("cwd")));
+        log.info(visitor.getDependencies(Files.newInputStream(Paths.get("/Users/sgururaj/projects/cim/app/core/target/classes/com/coverity/ces/dao/AnalysisSummariesDao.class"))));
     }
 
     public void testTest() throws IOException {
