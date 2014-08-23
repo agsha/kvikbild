@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.util.regex.Pattern;
 
 
 /**
@@ -49,13 +50,11 @@ public class AppTest
         App app = injector.getInstance(App.AppFactory.class).create(new String[0]);
         app.start();
         Builder builder = injector.getInstance(Builder.class);
-        builder.build();
+        builder.build(false);
     }
 
     public void testT() throws IOException {
-        DependencyVisitor visitor = injector.getInstance(DependencyVisitor.class);
-        String cwd = injector.getInstance(Key.get(String.class, Names.named("cwd")));
-        log.info(visitor.getDependencies(Files.newInputStream(Paths.get("/Users/sgururaj/projects/cim/app/core/target/classes/com/coverity/ces/dao/AnalysisSummariesDao.class"))));
+        assertTrue(Pattern.matches(".*src\\/test\\/java.*Test\\.java$", "/data00/trunk/cim/app/core/src/test/java/com/coverity/ces/service/GarbageCollectionServiceTest.java"));
     }
 
     public void testTest() throws IOException {

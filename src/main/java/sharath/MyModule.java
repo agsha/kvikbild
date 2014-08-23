@@ -1,5 +1,6 @@
 package sharath;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.Files;
 import com.google.inject.*;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
@@ -27,9 +28,11 @@ public class MyModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new FactoryModuleBuilder().build(App.AppFactory.class));
-        bindConstant().annotatedWith(Names.named("cwd")).to("/Users/sgururaj/projects/cim");
-        bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacOptions")).toProvider(JavacOptionsProvider.class).in(Singleton.class);
+        bindConstant().annotatedWith(Names.named("cwd")).to("/data00/trunk/cim");
+        bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacSrcOptions")).toProvider(JavacSrcOptionsProvider.class).in(Singleton.class);
+        bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacTestOptions")).toProvider(JavacTestOptionsProvider.class).in(Singleton.class);
         bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
+
     }
 
     @Provides
@@ -85,14 +88,14 @@ public class MyModule extends AbstractModule {
     }
 }
 
-class JavacOptionsProvider implements Provider<List<String>> {
+class JavacSrcOptionsProvider implements Provider<List<String>> {
 
     private String cwd;
-    private static final Logger log = Logger.getLogger(JavacOptionsProvider.class);
+    private static final Logger log = Logger.getLogger(JavacSrcOptionsProvider.class);
 
 
     @Inject
-    JavacOptionsProvider(@Named("cwd")  String cwd) {
+    JavacSrcOptionsProvider(@Named("cwd") String cwd) {
         this.cwd = cwd;
     }
     public List<String> get() {
@@ -104,3 +107,20 @@ class JavacOptionsProvider implements Provider<List<String>> {
         }
     }
 }
+
+class JavacTestOptionsProvider implements Provider<List<String>> {
+
+    private String cwd;
+    private static final Logger log = Logger.getLogger(JavacTestOptionsProvider.class);
+
+
+    @Inject
+    JavacTestOptionsProvider(@Named("cwd") String cwd) {
+        this.cwd = cwd;
+    }
+    public List<String> get() {
+        return ImmutableList.of("Coming soon!");
+    }
+}
+
+

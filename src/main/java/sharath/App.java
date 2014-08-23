@@ -73,7 +73,7 @@ public class App
             for (String dep : depsArray) {
                 deps.add(Paths.get(dep));
             }
-            graph.add(classpath, deps, FileTime.fromMillis(rs.getLong("class_mod_time")));
+            graph.update(classpath, deps, FileTime.fromMillis(rs.getLong("class_mod_time")));
         }
         rs.close();
         ps.close();
@@ -87,11 +87,10 @@ public class App
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (!matcher.matches(file)) return FileVisitResult.CONTINUE;
-                String classpath = file.toString();
                 // when should the graph be updated
                 // when the info in the graph does not have the latest class information.
                 // or if this classfile has no corresponding java file
-                if (graph.nodes.containsKey(file) && graph.nodes.get(file).classModTime.compareTo(attrs.lastModifiedTime()) > 0)
+                if (file.toString().indexOf("$")>-1 || (graph.nodes.containsKey(file) && graph.nodes.get(file).classModTime.compareTo(attrs.lastModifiedTime()) > 0))
                     return FileVisitResult.CONTINUE;
 
 

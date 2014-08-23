@@ -337,7 +337,11 @@ class DependencyVisitor extends ClassVisitor {
 
     private String getGroupKey(String name) {
         if(name.startsWith("com/coverity")) {
-            dependencies.add(Paths.get(cwd, name+".class"));
+            if(name.endsWith("Test")) {
+                dependencies.add(Paths.get(cwd, "app", "core", "target", "test-classes", name+".class"));
+            } else {
+                dependencies.add(Paths.get(cwd, "app", "core", "target", "classes", name+".class"));
+            }
         }
 
         int n = name.lastIndexOf('/');

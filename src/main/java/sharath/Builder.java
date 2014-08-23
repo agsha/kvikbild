@@ -19,6 +19,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * @author sgururaj
@@ -26,7 +27,8 @@ import java.util.*;
 public class Builder extends AbstractHandler {
     private Graph graph;
     private String cwd;
-    private List<String> javacOptions;
+    private List<String> javacSrcOptions;
+    private List<String> javacTestOptions;
     private External ext;
     private final JavaCompiler jc;
     private final StandardJavaFileManager fm;
@@ -36,12 +38,13 @@ public class Builder extends AbstractHandler {
 
     @Inject
     Builder(Graph graph, @Named("cwd") String cwd,
-            @Named("javacOptions") List<String> javacOptions,
+            @Named("javacSrcOptions") List<String> javacSrcOptions, @Named("javacTestOptions")List<String> javacTestOptions,
             External ext, JavaCompiler jc, StandardJavaFileManager fm, DependencyVisitor visitor, Utils utils) {
 
         this.graph = graph;
         this.cwd = cwd;
-        this.javacOptions = javacOptions;
+        this.javacSrcOptions = javacSrcOptions;
+        this.javacTestOptions = javacTestOptions;
         this.ext = ext;
         this.jc = jc;
         this.fm = fm;
@@ -49,7 +52,7 @@ public class Builder extends AbstractHandler {
         this.utils = utils;
     }
 
-    public void build() throws IOException {
+    public void build(boolean compileTests) throws IOException {
         final Path src = Paths.get(cwd, "app", "core", "src");
         final Path target = Paths.get(cwd, "app", "core", "target");
 
@@ -60,15 +63,25 @@ public class Builder extends AbstractHandler {
                 PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    if (matcher.matches(file)) {
-                        modifiedTimes.put(file.toString(), attrs.lastModifiedTime());
+                    if (!matcher.matches(file)) return FileVisitResult.CONTINUE;
+                    modifiedTimes.put(file.toString(), attrs.lastModifiedTime());
+
+                    if(file.toString().indexOf('$')>-1) return FileVisitResult.CONTINUE;
+                    if(!graph.nodes.containsKey(file) || graph.nodes.get(file).classModTime.compareTo(attrs.lastModifiedTime())<0) {
+                        log.info("updating stale dependency: "+file.toString());
+                        String ll = "class mod time:"+attrs.lastModifiedTime()+" before upd graph time:"+graph.nodes.get(file).classModTime;
+                        graph.update(file, visitor.getDependencies(Files.newInputStream(file)), FileTime.fromMillis(System.currentTimeMillis()));
+                        ll+=" AFter upd graph time: "+graph.nodes.get(file).classModTime;
+                        log.info(ll);
+
                     }
                     return FileVisitResult.CONTINUE;
                 }
             });
 
         //now compute the list of dirtyJavaFiles by comparing modified times for class files.
-        final ArrayList<File> dirtyJavaFiles = new ArrayList<>();
+        final Set<File> dirtyJavaFiles = new HashSet<>();
+        final Set<File> dependentFiles = new HashSet<>();
         ext.walkFileTree(ImmutableList.of(src.resolve("main/java"), src.resolve("test/java")), new SimpleFileVisitor<Path>() {
             PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
             @Override
@@ -78,29 +91,63 @@ public class Builder extends AbstractHandler {
                     FileTime classTime = modifiedTimes.get(classpath);
                     if (classTime == null||attrs.lastModifiedTime().compareTo(classTime) > 0) {
                         dirtyJavaFiles.add(new File(file.toString()));
+                        if(graph.nodes.get(Paths.get(classpath)).in.size()>0) {
+                            for(Node node : graph.nodes.get(Paths.get(classpath)).in) {
+                                String javaStr = utils.toJava(node.path.toString());
+                                if(!Files.isRegularFile(Paths.get(javaStr))) continue;
+                                dependentFiles.add(new File(javaStr));
+                            }
+                        }
+
                     }
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
 
-        log.info("Compiling the following files");
-        for (File file : dirtyJavaFiles) {
-            log.info(file.getAbsolutePath());
+
+        log.info("Compiling the following files:");
+        HashSet<File> allSrcFilesToCompile = new HashSet<File>();
+        HashSet<File> allTestFilesToCompile = new HashSet<File>();
+        HashSet<File> allFiles = new HashSet<File>(dirtyJavaFiles);
+        allFiles.addAll(dependentFiles);
+        for(File file: allFiles) {
+            if(Pattern.matches(".*src\\/test\\/java.*Test\\.java$", file.getAbsolutePath())) {
+                allTestFilesToCompile.add(file);
+                if(compileTests) log.info(file.getAbsolutePath());
+            } else {
+                log.info(file.getAbsolutePath());
+                allSrcFilesToCompile.add(file);
+            }
         }
 
-        //now start compiling all the dirty java files.
-        Iterable<? extends JavaFileObject> sources = fm.getJavaFileObjectsFromFiles(dirtyJavaFiles);
-        Boolean success = jc.getTask(null, fm, null, javacOptions, null, sources).call();
+
+
+        //now start compiling
+        Iterable<? extends JavaFileObject> sources = fm.getJavaFileObjectsFromFiles(allSrcFilesToCompile);
+        log.info(javacSrcOptions);
+        Boolean success = true;
+        if(allSrcFilesToCompile.size()>0) {
+            jc.getTask(null, fm, null, javacSrcOptions, null, sources).call();
+        }
+        if(compileTests && allTestFilesToCompile.size()>0) {
+            Iterable<? extends JavaFileObject> tests = fm.getJavaFileObjectsFromFiles(allTestFilesToCompile);
+            log.info(javacSrcOptions);
+            success &= jc.getTask(null, fm, null, javacTestOptions, null, tests).call();
+
+        }
         if(success) {
             log.info("Successfully compiled.");
         } else {
             log.error("Compilation failed!");
         }
 
-        for (File file : dirtyJavaFiles) {
+
+        HashSet<File> allCompiled = new HashSet<>(allSrcFilesToCompile);
+        if(compileTests) allCompiled.addAll(allTestFilesToCompile);
+        for (File file : allCompiled) {
             String javapath = file.getAbsolutePath();
-            String classpath = javapath.substring(0, javapath.length()-4)+"class";
+            String classpath = utils.toClass(Paths.get(javapath));
             Set<Path> deps = visitor.getDependencies(Files.newInputStream(Paths.get(classpath)));
             graph.update(Paths.get(classpath), deps, FileTime.fromMillis(System.currentTimeMillis()));
         }
@@ -111,7 +158,7 @@ public class Builder extends AbstractHandler {
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
         log.info("Request from client: "+s);
         if(s.equals("/compile")) {
-            build();
+            build("tests".equals(request.getParameter("include")));
             return;
         }
         log.error("Unknown request from client: "+s);

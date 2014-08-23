@@ -15,46 +15,37 @@ import java.util.Set;
  */
 @Singleton
 public class Graph {
-    HashMap<Path, Node> nodes = new HashMap<>();
+    HashMap<Path, Node> nodes = new HashMap<Path, Node>();
     private boolean dirty;
 
-    public synchronized Node  add(Path path, Iterable<Path> children, FileTime classModTime) {
-        dirty = true;
-        Node node = getOrCreateNode(path, classModTime);
-        for(Path p: children) {
-            Node to = getOrCreateNode(p, classModTime);
-            node.out.add(to);
-            to.in.add(node);
-        }
-        return node;
-    }
 
-    private Node getOrCreateNode(Path path, FileTime classModTime) {
+    private Node getOrCreateNode(Path path) {
         Node node = nodes.get(path);
         if(node == null) {
-            node = new Node(path, classModTime);
+            node = new Node(path);
             nodes.put(path, node);
         }
-        node.classModTime = classModTime;
         return node;
     }
 
-    public synchronized Node update(Path file, Iterable<Path> deps, FileTime fileTime) {
-        dirty = true;
-        if(!nodes.containsKey(file)) return add(file, deps, fileTime);
-        Node node = nodes.get(file);
-        ArrayList<Node> oldOuts = node.out;
-        node.out = new ArrayList<>();
-        for(Path p: deps) {
-            Node to = getOrCreateNode(p, fileTime);
-            node.out.add(to);
-            to.in.add(node);
-        }
-        for (Node out : oldOuts) {
-            out.in.remove(node);
+    public Node update(Path file, Iterable<Path> deps, FileTime fileTime) {
+        synchronized(this) {
+            dirty = true;
+            Node node = getOrCreateNode(file);
+            node.classModTime = fileTime;
+            ArrayList<Node> oldOuts = node.out;
+            node.out = new ArrayList<>();
+            for(Path p: deps) {
+                Node to = getOrCreateNode(p);
+                node.out.add(to);
+                to.in.add(node);
+            }
+            for (Node out : oldOuts) {
+                out.in.remove(node);
 
+            }
+            return node;
         }
-        return node;
     }
 
     public void setDirty(boolean dirty) {
@@ -73,14 +64,12 @@ public class Graph {
 
 class Node {
     Path path;
-    FileTime classModTime;
-    FileTime javaModTime;
+    FileTime classModTime = FileTime.fromMillis(0);
     ArrayList<Node> out = new ArrayList<>();
     ArrayList<Node> in = new ArrayList<>();
-    Node(Path path, FileTime classModTime) {
+    Node(Path path) {
 
         this.path = path;
-        this.classModTime = classModTime;
     }
 
     @Override

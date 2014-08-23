@@ -14,8 +14,7 @@ public class CreateSchema {
           "CREATE TABLE dependency (\n" +
                   "classpath text PRIMARY KEY NOT NULL,\n" +
                   "deps text not null,\n" +
-                  "class_mod_time BIGINT not null,\n" +
-                  "java_mod_time BIGINT not null\n" +
+                  "class_mod_time BIGINT not null\n" +
                   ")\n"
         };
         for (String stmt : stmts) {
