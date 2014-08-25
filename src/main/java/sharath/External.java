@@ -18,7 +18,7 @@ public class External {
 
     public void mkdir(Path path) throws IOException {
         try {
-            Files.createDirectory(path);
+            Files.createDirectories(path);
         } catch(FileAlreadyExistsException e) {
             if(!Files.isDirectory(path)) {
                 throw e;

@@ -6,6 +6,7 @@ import com.google.inject.*;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.eclipse.jetty.server.Server;
 
@@ -28,7 +29,7 @@ public class MyModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new FactoryModuleBuilder().build(App.AppFactory.class));
-        bindConstant().annotatedWith(Names.named("cwd")).to("/data00/trunk/cim");
+        bindConstant().annotatedWith(Names.named("cwd")).to("/Users/sgururaj/projects/cim");
         bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacSrcOptions")).toProvider(JavacSrcOptionsProvider.class).in(Singleton.class);
         bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacTestOptions")).toProvider(JavacTestOptionsProvider.class).in(Singleton.class);
         bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
@@ -100,7 +101,8 @@ class JavacSrcOptionsProvider implements Provider<List<String>> {
     }
     public List<String> get() {
         try {
-            return Arrays.asList(Files.readLines(new File(cwd, "javac_options"), Charset.defaultCharset()).get(0).split(" "));
+            //log.info(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_options.mac")).get(1));
+            return Arrays.asList(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_options.mac")).get(0).split("\\s+"));
         } catch (IOException e) {
             log.error("error occured", e);
             throw new RuntimeException(e);
@@ -119,7 +121,13 @@ class JavacTestOptionsProvider implements Provider<List<String>> {
         this.cwd = cwd;
     }
     public List<String> get() {
-        return ImmutableList.of("Coming soon!");
+        try {
+            //log.info(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_options.mac")).get(1));
+            return Arrays.asList(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_test_options.mac")).get(0).split("\\s+"));
+        } catch (IOException e) {
+            log.error("error occured", e);
+            throw new RuntimeException(e);
+        }
     }
 }
 

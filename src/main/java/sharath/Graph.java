@@ -1,14 +1,12 @@
 package sharath;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author sgururaj
@@ -21,7 +19,7 @@ public class Graph {
 
     private Node getOrCreateNode(Path path) {
         Node node = nodes.get(path);
-        if(node == null) {
+        if (node == null) {
             node = new Node(path);
             nodes.put(path, node);
         }
@@ -29,13 +27,13 @@ public class Graph {
     }
 
     public Node update(Path file, Iterable<Path> deps, FileTime fileTime) {
-        synchronized(this) {
+        synchronized (this) {
             dirty = true;
             Node node = getOrCreateNode(file);
             node.classModTime = fileTime;
             ArrayList<Node> oldOuts = node.out;
             node.out = new ArrayList<>();
-            for(Path p: deps) {
+            for (Path p : deps) {
                 Node to = getOrCreateNode(p);
                 node.out.add(to);
                 to.in.add(node);
@@ -48,8 +46,14 @@ public class Graph {
         }
     }
 
+    public Node delete(Path file) {
+        return delete(ImmutableSet.of(file));
+    }
+
     public void setDirty(boolean dirty) {
-        this.dirty = dirty;
+        synchronized (this){
+            this.dirty = dirty;
+        }
     }
 
     @Override
@@ -60,6 +64,23 @@ public class Graph {
     public boolean isDirty() {
         return dirty;
     }
+
+    public Node delete(Iterable<Path> toBeDeleted) {
+        synchronized (this) {
+            for (Path file : toBeDeleted) {
+                if (!nodes.containsKey(file)) return null;
+                Node node = nodes.remove(file);
+                for (Node n : node.out) {
+                    n.in.remove(node);
+                }
+                return node;
+
+            }
+            return null;
+
+        }
+
+    }
 }
 
 class Node {
@@ -67,6 +88,7 @@ class Node {
     FileTime classModTime = FileTime.fromMillis(0);
     ArrayList<Node> out = new ArrayList<>();
     ArrayList<Node> in = new ArrayList<>();
+
     Node(Path path) {
 
         this.path = path;
