@@ -1,7 +1,5 @@
 package sharath;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.io.Files;
 import com.google.inject.*;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.name.Named;
@@ -13,9 +11,9 @@ import org.eclipse.jetty.server.Server;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
@@ -29,24 +27,49 @@ public class MyModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new FactoryModuleBuilder().build(App.AppFactory.class));
-        bindConstant().annotatedWith(Names.named("cwd")).to("/Users/sgururaj/projects/cim");
-        bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacSrcOptions")).toProvider(JavacSrcOptionsProvider.class).in(Singleton.class);
-        bind(new TypeLiteral<List<String>>(){}).annotatedWith(Names.named("javacTestOptions")).toProvider(JavacTestOptionsProvider.class).in(Singleton.class);
+        String cwd = "/data00/trunk/cim";
+        bindConstant().annotatedWith(Names.named("cwd")).to(cwd);
+        bind(JavaCompiler.class).toInstance(ToolProvider.getSystemJavaCompiler());
+        bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
+
+        //core bindings
+        bind(Path.class).annotatedWith(Names.named("coreSrc")).toInstance(Paths.get(cwd, "app", "core", "src", "main", "java"));
+        bind(Path.class).annotatedWith(Names.named("coreDest")).toInstance(Paths.get(cwd, "app", "core", "target", "classes"));
+        bind(Path.class).annotatedWith(Names.named("coreSrcTest")).toInstance(Paths.get(cwd, "app", "core", "src", "test", "java"));
+        bind(Path.class).annotatedWith(Names.named("coreDestTest")).toInstance(Paths.get(cwd, "app", "core", "target", "test-classes"));
+        bind(Graph.class).annotatedWith(Names.named("core")).toInstance(new Graph());
+        bind(new TypeLiteral<List<String>>() {})
+                .annotatedWith(Names.named("coreJavacSrcOptions"))
+                .toInstance(getOptions("javac_core_src_options.ubuntu"));
+        bind(new TypeLiteral<List<String>>() {})
+                .annotatedWith(Names.named("coreJavacTestOptions"))
+                .toInstance(getOptions("javac_core_test_options.ubuntu"));
+        bind(StandardJavaFileManager.class)
+                .annotatedWith(Names.named("core"))
+                .toInstance(ToolProvider
+                        .getSystemJavaCompiler()
+                        .getStandardFileManager(null, null, null));
+
+
         bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
 
     }
 
     @Provides
     @Singleton
-    JavaCompiler provideJavaCompiler() {
-        return ToolProvider.getSystemJavaCompiler();
+    @Named("core")
+    public DependencyVisitor getCoreDependencyVisitor(@Named("coreDest") Path coreDest, @Named("coreDestTest")Path coreDestTest, DependencyVisitor.DependencyVisitorFactory factory) {
+        return factory.create(coreDest, coreDestTest);
     }
 
     @Provides
     @Singleton
-    StandardJavaFileManager provideStandardJavaFileManager(JavaCompiler jc) {
-        return jc.getStandardFileManager(null, null, null);
+    @Named("core")
+    public Utils getUtils(@Named("coreSrc") Path coreSrc, @Named("coreSrcTest")Path coreTest, @Named("coreDest") Path coreDest, @Named("coreDestTest")Path coreDestTest) {
+        return new Utils(coreSrc.toString(),
+                coreTest.toString(), coreDest.toString(), coreDestTest.toString());
     }
+
 
     @Provides
     @Singleton
@@ -55,6 +78,17 @@ public class MyModule extends AbstractModule {
         server.setHandler(builder);
         return server;
     }
+
+    private List<String> getOptions(String optionsFile) {
+        try {
+            //log.info(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_core_src_options.mac")).get(1));
+            return Arrays.asList(IOUtils.readLines(ClassLoader.getSystemResourceAsStream(optionsFile)).get(0).split("\\s+"));
+        } catch (IOException e) {
+            log.error("error occured", e);
+            throw new RuntimeException(e);
+        }
+    }
+
     @Provides
     @Singleton
     Connection getConnection() {
@@ -68,7 +102,7 @@ public class MyModule extends AbstractModule {
             ps = c.prepareStatement("SELECT name FROM sqlite_master WHERE type='table';");
             rs = ps.executeQuery();
             if(rs.next()) {
-                if(rs.getString(1).equals("dependency"))
+                if(rs.getString(1).equals("core_graph"))
                     return c;
             }
             new CreateSchema().create(c);
@@ -88,47 +122,3 @@ public class MyModule extends AbstractModule {
         }
     }
 }
-
-class JavacSrcOptionsProvider implements Provider<List<String>> {
-
-    private String cwd;
-    private static final Logger log = Logger.getLogger(JavacSrcOptionsProvider.class);
-
-
-    @Inject
-    JavacSrcOptionsProvider(@Named("cwd") String cwd) {
-        this.cwd = cwd;
-    }
-    public List<String> get() {
-        try {
-            //log.info(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_options.mac")).get(1));
-            return Arrays.asList(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_options.mac")).get(0).split("\\s+"));
-        } catch (IOException e) {
-            log.error("error occured", e);
-            throw new RuntimeException(e);
-        }
-    }
-}
-
-class JavacTestOptionsProvider implements Provider<List<String>> {
-
-    private String cwd;
-    private static final Logger log = Logger.getLogger(JavacTestOptionsProvider.class);
-
-
-    @Inject
-    JavacTestOptionsProvider(@Named("cwd") String cwd) {
-        this.cwd = cwd;
-    }
-    public List<String> get() {
-        try {
-            //log.info(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_options.mac")).get(1));
-            return Arrays.asList(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_test_options.mac")).get(0).split("\\s+"));
-        } catch (IOException e) {
-            log.error("error occured", e);
-            throw new RuntimeException(e);
-        }
-    }
-}
-
-

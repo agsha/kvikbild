@@ -5,16 +5,7 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.assistedinject.Assisted;
 import com.google.inject.name.Named;
-import org.apache.log4j.Logger;
 import org.eclipse.jetty.server.Server;
-
-import java.nio.file.*;
-import java.nio.file.attribute.FileTime;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Hello world!
@@ -23,22 +14,15 @@ import java.util.List;
 public class App
 {
     private final String[] args;
-    private final External ext;
-    private static final Logger log = Logger.getLogger(App.class);
-    private final String cwd;
-    private Graph graph;
-    private Connection c;
+    private Graph coreGraph;
     private GraphFlusher flusher;
     private Server server;
 
     @Inject
-    public App(@Assisted String[] args, External ext, @Named("cwd") String cwd, Graph graph, Connection c, GraphFlusher flusher, Server server) {
+    public App(@Assisted String[] args, @Named("core")Graph coreGraph , GraphFlusher flusher, Server server) {
 
         this.args = args;
-        this.ext = ext;
-        this.cwd = cwd;
-        this.graph = graph;
-        this.c = c;
+        this.coreGraph = coreGraph;
         this.flusher = flusher;
         this.server = server;
     }
@@ -50,20 +34,8 @@ public class App
     }
 
     public void start() throws Exception {
-        PreparedStatement ps = c.prepareStatement("select * from dependency");
-        ResultSet rs = ps.executeQuery();
-        while(rs.next()) {
-            Path classpath = Paths.get(rs.getString("classpath"));
-            String[] depsArray = rs.getString("deps").split(",");
-            List<Path> deps = new ArrayList<>(depsArray.length);
-            for (String dep : depsArray) {
-                deps.add(Paths.get(dep));
-            }
-            graph.update(classpath, deps, FileTime.fromMillis(rs.getLong("class_mod_time")));
-        }
-        graph.setDirty(false);
-        rs.close();
-        ps.close();
+        flusher.addGraph(coreGraph, "core_graph", "core");
+        flusher.loadAll();
 
         flusher.start();
         server.start();

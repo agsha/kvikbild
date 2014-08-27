@@ -8,13 +8,8 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import org.apache.log4j.Logger;
-import org.junit.runner.JUnitCore;
-import org.junit.runner.Request;
-import org.junit.runner.Result;
-import org.junit.runner.notification.Failure;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -59,7 +54,6 @@ public class AppTest
         App app = injector.getInstance(App.AppFactory.class).create(new String[0]);
         app.start();
         Builder builder = injector.getInstance(Builder.class);
-        builder.build(false);
     }
 
     public void testPb() throws IOException, InterruptedException {
@@ -75,13 +69,7 @@ public class AppTest
     public void testTTTT() {
         log.error("foofoofoofoof");
     }
-    public void testJavacOptions() {
-        log.info(new JavacSrcOptionsProvider(cwd).get());
-    }
 
-    public void testJunit() throws ClassNotFoundException{
-        RunTest.main(new String[]{"sharath.AppTest#testTTTT"});
-    }
 
     public void testExtractLine() throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(Paths.get(cwd, "build.log").toString()));
@@ -91,7 +79,7 @@ public class AppTest
             log.info(line);
             if(count==5073) {
                 log.info("hiiiiiiiiiiiiiiiii");
-                Files.write(Paths.get("/Users/sgururaj/projects/kvikbild/javac_options.mac"), line.getBytes());
+                Files.write(Paths.get("/Users/sgururaj/projects/kvikbild/javac_core_src_options.mac"), line.getBytes());
                 return;
             }
             count++;

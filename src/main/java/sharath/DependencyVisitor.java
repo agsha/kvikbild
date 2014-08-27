@@ -61,7 +61,8 @@ class DependencyVisitor extends ClassVisitor {
 
 
     Set<Path> dependencies = new HashSet<>();
-    private String cwd;
+    private Path dest;
+    private Path destTest;
 
     public Map<String, Map<String, Integer>> getGlobals() {
         return groups;
@@ -72,10 +73,11 @@ class DependencyVisitor extends ClassVisitor {
     }
 
     @Inject
-    public DependencyVisitor(@Named("cwd")String cwd) {
+    private DependencyVisitor(Path dest, Path destTest) {
 
         super(Opcodes.ASM5);
-        this.cwd = cwd;
+        this.dest = dest;
+        this.destTest = destTest;
     }
 
     public Set<Path> getDependencies(InputStream stream) throws IOException {
@@ -84,6 +86,7 @@ class DependencyVisitor extends ClassVisitor {
         if(current!=null) current.clear();
         dependencies.clear();
         new ClassReader(stream).accept(this, 0);
+        stream.close();
         return dependencies;
     }
     // ClassVisitor
@@ -338,9 +341,9 @@ class DependencyVisitor extends ClassVisitor {
     private String getGroupKey(String name) {
         if(name.startsWith("com/coverity")) {
             if(name.endsWith("Test")) {
-                dependencies.add(Paths.get(cwd, "app", "core", "target", "test-classes", name+".class"));
+                dependencies.add(Paths.get(destTest.toString(), name+".class"));
             } else {
-                dependencies.add(Paths.get(cwd, "app", "core", "target", "classes", name+".class"));
+                dependencies.add(Paths.get(dest.toString(), name+".class"));
             }
         }
 
@@ -421,6 +424,12 @@ class DependencyVisitor extends ClassVisitor {
             Handle h = (Handle) cst;
             addInternalName(h.getOwner());
             addMethodDesc(h.getDesc());
+        }
+    }
+
+    static class DependencyVisitorFactory {
+        public DependencyVisitor create(Path dest, Path destTest) {
+            return new DependencyVisitor(dest, destTest);
         }
     }
 }
