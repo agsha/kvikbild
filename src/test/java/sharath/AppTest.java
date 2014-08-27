@@ -26,6 +26,7 @@ public class AppTest
     private static final Logger log = Logger.getLogger(AppTest.class.getName());
     private static final FileSystem fs = FileSystems.getDefault();
     private final String cwd;
+    private final Utils utils;
     Injector injector = Guice.createInjector(new MyModule());
     /**
      * Create the test case
@@ -36,7 +37,7 @@ public class AppTest
     {
         super( testName );
         cwd = injector.getInstance(Key.get(String.class, Names.named("cwd")));
-
+        utils = injector.getInstance(Key.get(Utils.class, Names.named("core")));
     }
 
     /**
@@ -64,6 +65,12 @@ public class AppTest
         process.waitFor();
 
 
+    }
+
+    public void testtt() {
+        log.error(
+        utils.toClass(Paths.get("/Users/sgururaj/projects/cim/app/core/src/main/java/com/coverity/ces/util/ConversionUtils.java")));
+        log.error(utils.toJava(Paths.get("/Users/sgururaj/projects/cim/app/core/target/classes/com/coverity/ces/util/ConversionUtils.class")));
     }
 
     public void testTTTT() {
