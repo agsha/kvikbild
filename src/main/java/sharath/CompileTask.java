@@ -2,11 +2,12 @@ package sharath;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import org.apache.log4j.Logger;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -19,45 +20,37 @@ import java.util.regex.Pattern;
  * Created by sgururaj on 8/25/14.
  */
 public class CompileTask {
-    private final Path srcTest;
-    private final Path destTest;
-    private final Graph graph;
-    private External ext;
-    private DependencyVisitor visitor;
-    private final JavaCompiler jc;
-    private final StandardJavaFileManager fm;
-    private Utils utils;
-    private final List<String> javacSrcOptions;
-    private final List<String> javacTestOptions;
-    private final Path src;
-    private final Path dest;
     private static final Logger log = Logger.getLogger(CompileTask.class);
+    private final Utils.CimModule cimModule;
+    private final Graph graph;
+    private final External ext;
+    private final DependencyVisitor visitor;
+    private final JavaCompiler jc;
+    private final Utils.StandardJavaFileManagerFactory fmFactory;
+    private final Utils utils;
+    private String javaAgent;
 
-    protected CompileTask(Path src, Path dest, Path srcTest, Path destTest, Graph graph, External ext, DependencyVisitor visitor, JavaCompiler jc, StandardJavaFileManager fm, Utils utils, List<String> javacSrcOptions, List<String> javacTestOptions) {
-        this.src = src;
-        this.dest = dest;
-        this.srcTest = srcTest;
-        this.destTest = destTest;
+    protected CompileTask(Utils.CimModule cimModule, Graph graph, External ext, DependencyVisitor visitor, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils utils, String javaAgent) {
+        this.cimModule = cimModule;
         this.graph = graph;
         this.ext = ext;
         this.visitor = visitor;
         this.jc = jc;
-        this.fm = fm;
+        this.fmFactory = fmFactory;
         this.utils = utils;
-        this.javacSrcOptions = javacSrcOptions;
-        this.javacTestOptions = javacTestOptions;
+        this.javaAgent = javaAgent;
     }
 
 
     public boolean doCompile(boolean compileTests) throws IOException {
-        ext.mkdir(dest);
-        ext.mkdir(destTest);
-        ext.mkdir(dest.getParent().resolve(Paths.get("generated-sources", "annotations")));
-        ext.mkdir(dest.getParent().resolve(Paths.get("generated-test-sources", "test-annotations")));
+        ext.mkdir(cimModule.dest);
+        ext.mkdir(cimModule.destTest);
+        ext.mkdir(cimModule.dest.getParent().resolve(Paths.get("generated-sources", "annotations")));
+        ext.mkdir(cimModule.dest.getParent().resolve(Paths.get("generated-test-sources", "test-annotations")));
 
         final HashMap<String, FileTime> modifiedTimes = new HashMap<>(3000);
 
-        ext.walkFileTree(ImmutableList.of(dest, destTest),
+        ext.walkFileTree(ImmutableList.of(cimModule.dest, cimModule.destTest),
             new SimpleFileVisitor<Path>() {
                 PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
                 @Override
@@ -87,7 +80,7 @@ public class CompileTask {
         //now compute the list of dirtyJavaFiles by comparing modified times for class files.
         final Set<File> dirtyJavaFiles = new HashSet<>();
         final Set<File> dependentFiles = new HashSet<>();
-        ext.walkFileTree(ImmutableList.of(src, srcTest), new SimpleFileVisitor<Path>() {
+        ext.walkFileTree(ImmutableList.of(cimModule.src, cimModule.srcTest), new SimpleFileVisitor<Path>() {
             PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -129,23 +122,24 @@ public class CompileTask {
         //log.info(javacSrcOptions);
 
         //now start compiling
-        Iterable<? extends JavaFileObject> sources = fm.getJavaFileObjectsFromFiles(allSrcFilesToCompile);
+        Iterable<? extends JavaFileObject> sources = fmFactory.forCoreSrc().getJavaFileObjectsFromFiles(allSrcFilesToCompile);
         Boolean success = true;
         if(allSrcFilesToCompile.size()>0) {
-            jc.getTask(null, fm, null, javacSrcOptions, null, sources).call();
+            jc.getTask(null, fmFactory.forCoreSrc(), null, cimModule.javacSrcOptions, null, sources).call();
         }
         if(compileTests && allTestFilesToCompile.size()>0) {
             log.info("compiling test files");
-            log.info(javacTestOptions);
-            Iterable<? extends JavaFileObject> tests = fm.getJavaFileObjectsFromFiles(allTestFilesToCompile);
-            success &= jc.getTask(null, fm, null, javacTestOptions, null, tests).call();
+            Joiner sp = Joiner.on(" ");
+            Iterable<? extends JavaFileObject> tests = fmFactory.forCoreTest().getJavaFileObjectsFromFiles(allTestFilesToCompile);
+            log.info(sp.join(new String[]{"javac", sp.join(cimModule.javacTestOptions), sp.join(allTestFilesToCompile)}));
+            success &= jc.getTask(null, fmFactory.forCoreTest(), null,cimModule.javacTestOptions, null, tests).call();
 
         }
 
         return success;
     }
     public void runTest(String claz) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder("java","-Xdebug", "-Xrunjdwp:server=y,transport=dt_socket,address=4005,suspend=n", "-classpath", javacTestOptions.get(3), "com.coverity.TestRunner", claz);
+        ProcessBuilder pb = new ProcessBuilder("java","-Xdebug", "-Xrunjdwp:server=y,transport=dt_socket,address=4005,suspend=n", "-classpath", cimModule.javacTestOptions.get(3), "com.coverity.TestRunner", claz);
         log.info(Joiner.on(" ").join(pb.command()));
         pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
@@ -154,6 +148,65 @@ public class CompileTask {
         log.info("finished running the test");
     }
 
+    public void runNailgun() {
+        Runnable nailgunRunnable = new Runnable() {
+            @Override
+            public void run() {
+                ProcessBuilder pb = new ProcessBuilder("/bin/bash", "java","-Xdebug", "-Xrunjdwp:server=y,transport=dt_socket,address=4005,suspend=n", "-Xmx1g", "-XX:MaxPermSize=512M", javaAgent, "-classpath", cimModule.javacTestOptions.get(3), "org.junit.runner.JUnitCore", "com.coverity.ces.test.CoreTestNailGunServer");
+                log.info(Joiner.on(" ").join(pb.command()));
+                pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
+                Process process = null;
+                try {
+                    process = pb.start();
+                } catch (IOException e) {
+                    log.error("io exception", e);
+                    return;
+                }
+                try {
+                    process.waitFor();
+                } catch (InterruptedException e) {
+                   log.error("Interrupted exception", e);
+                }
+                log.info("finished running the test");
+            }
+        };
+        Thread t = new Thread(nailgunRunnable);
+        t.start();
+    }
+
+    static class Factory {
+        private final Utils.CimModule coreModule;
+        private final Graph.Factory graphFactory;
+        private final External ext;
+        private final DependencyVisitor.Factory visitorFactory;
+        private final JavaCompiler jc;
+        private final Utils.StandardJavaFileManagerFactory fmFactory;
+        private final Utils.Factory utilsFactory;
+        private String javaAgent;
+
+        @Inject
+        public Factory(@Named("core")Utils.CimModule coreModule, Graph.Factory graphFactory, External ext, DependencyVisitor.Factory visitorFactory, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils.Factory utilsFactory, @Named("javaagent")String javaAgent) {
+
+            this.coreModule = coreModule;
+            this.graphFactory = graphFactory;
+            this.ext = ext;
+            this.visitorFactory = visitorFactory;
+            this.jc = jc;
+            this.fmFactory = fmFactory;
+            this.utilsFactory = utilsFactory;
+            this.javaAgent = javaAgent;
+        }
+        public CompileTask createCoreCompileTask() {
+            return new CompileTask(coreModule,
+                    graphFactory.getForName("core"),
+                    ext,
+                    visitorFactory.create(coreModule.dest, coreModule.destTest),
+                    jc,
+                    fmFactory,
+                    utilsFactory.create(coreModule),
+                    javaAgent);
+        }
+    }
 }
 

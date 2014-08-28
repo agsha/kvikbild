@@ -72,10 +72,13 @@ class DependencyVisitor extends ClassVisitor {
         return packages;
     }
 
-    @Inject
-    private DependencyVisitor(Path dest, Path destTest) {
-
-        super(Opcodes.ASM5);
+    static class Factory {
+        public DependencyVisitor create(Path dest, Path destTest) {
+            return new DependencyVisitor(Opcodes.ASM5, dest, destTest);
+        }
+    }
+    private DependencyVisitor(int opcode, Path dest, Path destTest) {
+        super(opcode);
         this.dest = dest;
         this.destTest = destTest;
     }
@@ -424,12 +427,6 @@ class DependencyVisitor extends ClassVisitor {
             Handle h = (Handle) cst;
             addInternalName(h.getOwner());
             addMethodDesc(h.getDesc());
-        }
-    }
-
-    static class DependencyVisitorFactory {
-        public DependencyVisitor create(Path dest, Path destTest) {
-            return new DependencyVisitor(dest, destTest);
         }
     }
 }

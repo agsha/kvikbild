@@ -1,6 +1,7 @@
 package sharath;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import org.apache.log4j.Logger;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -15,30 +16,56 @@ import java.io.IOException;
  */
 public class Builder extends AbstractHandler {
     private static final Logger log = Logger.getLogger(Builder.class);
-    private CoreCompileTask coreCompileTask;
+    private CompileTask compileTask;
+    private ResourceTask resourceTask;
 
-    @Inject
-    Builder(CoreCompileTask coreCompileTask) {
+    Builder(CompileTask compileTask, ResourceTask resourceTask) {
 
-        this.coreCompileTask = coreCompileTask;
+        this.compileTask = compileTask;
+        this.resourceTask = resourceTask;
     }
 
     @Override
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
         log.info("Request from client: "+s);
         if(s.equals("/compile")) {
-            coreCompileTask.doCompile(true);
+            compileTask.doCompile(true);
+            resourceTask.updateResources();
         } else if(s.equals("/runTest")) {
-            coreCompileTask.doCompile(true);
+            compileTask.doCompile(true);
+            resourceTask.updateResources();
+
             try {
-                coreCompileTask.runTest(request.getParameter("class"));
+                compileTask.runTest(request.getParameter("class"));
+
             } catch (InterruptedException e) {
                 log.error("error while running test", e);
             }
 
+        } else if(s.equals("/nailgun")) {
+            compileTask.doCompile(true);
+            resourceTask.updateResources();
+            compileTask.runNailgun();
         } else {
             log.error("Unknown request from client: "+s);
         }
 
+    }
+
+    static class BuilderProvider implements Provider<Builder> {
+
+        CompileTask.Factory compileTaskFactory;
+        private ResourceTask.Factory resourceFactory;
+
+        @Inject
+        BuilderProvider(CompileTask.Factory compileTaskFactory, ResourceTask.Factory resourceFactory) {
+            this.compileTaskFactory = compileTaskFactory;
+            this.resourceFactory = resourceFactory;
+        }
+
+        @Override
+        public Builder get() {
+            return new Builder(compileTaskFactory.createCoreCompileTask(), resourceFactory.createCoreResourceTask());
+        }
     }
 }

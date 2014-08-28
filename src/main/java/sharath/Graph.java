@@ -81,6 +81,20 @@ public class Graph {
         }
 
     }
+
+    @Singleton
+    static class Factory {
+        HashMap<String, Graph> map = new HashMap<>();
+        public Graph getForName(String name) {
+            if("core".equals(name)) {
+                if(map.get(name)==null) {
+                    map.put(name, new Graph());
+                }
+                return map.get(name);
+            }
+            throw new RuntimeException("Must be 'core'");
+        }
+    }
 }
 
 class Node {

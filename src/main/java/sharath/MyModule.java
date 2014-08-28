@@ -12,7 +12,6 @@ import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.*;
 import java.util.Arrays;
@@ -26,50 +25,54 @@ public class MyModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        install(new FactoryModuleBuilder().build(App.AppFactory.class));
         String cwd = "/data00/trunk/cim";
         bindConstant().annotatedWith(Names.named("cwd")).to(cwd);
         bind(JavaCompiler.class).toInstance(ToolProvider.getSystemJavaCompiler());
         bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
+        bindConstant().annotatedWith(Names.named("javaagent")).to("-javaagent:\"/nfs/sgururaj/.IntelliJIdea13/config/plugins/jr-ide-idea/lib/jrebel/jrebel.jar\" -javaagent:\"/nfs/sgururaj/.m2/repository/org/jmockit/jmockit/1.8/jmockit-1.8.jar\"");
+        //bindConstant().annotatedWith(Names.named("javaagent")).to(" ");
 
-        //core bindings
-        bind(Path.class).annotatedWith(Names.named("coreSrc")).toInstance(Paths.get(cwd, "app", "core", "src", "main", "java"));
-        bind(Path.class).annotatedWith(Names.named("coreDest")).toInstance(Paths.get(cwd, "app", "core", "target", "classes"));
-        bind(Path.class).annotatedWith(Names.named("coreSrcTest")).toInstance(Paths.get(cwd, "app", "core", "src", "test", "java"));
-        bind(Path.class).annotatedWith(Names.named("coreDestTest")).toInstance(Paths.get(cwd, "app", "core", "target", "test-classes"));
-        bind(Graph.class).annotatedWith(Names.named("core")).toInstance(new Graph());
-        bind(new TypeLiteral<List<String>>() {})
-                .annotatedWith(Names.named("coreJavacSrcOptions"))
-                .toInstance(getOptions("javac_core_src_options.ubuntu"));
-        bind(new TypeLiteral<List<String>>() {})
-                .annotatedWith(Names.named("coreJavacTestOptions"))
-                .toInstance(getOptions("javac_core_test_options.ubuntu"));
-        bind(StandardJavaFileManager.class)
-                .annotatedWith(Names.named("core"))
-                .toInstance(ToolProvider
-                        .getSystemJavaCompiler()
-                        .getStandardFileManager(null, null, null));
-
-
-        bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
-
+        bind(Builder.class).toProvider(Builder.BuilderProvider.class);
+    }
+    @Provides
+    @Singleton
+    @Named("core")
+    public  Utils.CimModule getCoreCimModule(@Named("cwd")String cwd) {
+        log.error(cwd);
+        log.error("hiiiiiiiiii");
+        log.error("hiiiiiiiiii");
+        log.error("hiiiiiiiiii");
+        log.error("hiiiiiiiiii");
+        log.error("hiiiiiiiiii");
+        log.error("hiiiiiiiiii");
+        log.error("hiiiiiiiiii");
+        try {
+            log.error(IOUtils.readLines(getClass().getClassLoader().getResourceAsStream("javac_core_src_options.ubuntu")));
+        } catch (IOException e) {
+            e.printStackTrace(); // NOCOMMIT
+            throw new RuntimeException(e);
+        }
+        return new Utils.CimModule(
+                Paths.get(cwd, "app", "core", "src", "main", "java"),
+                Paths.get(cwd, "app", "core", "target", "classes"),
+                Paths.get(cwd, "app", "core", "src", "test", "java"),
+                Paths.get(cwd, "app", "core", "target", "test-classes"),
+                Paths.get(cwd, "app", "core", "src", "main", "resources"),
+                Paths.get(cwd, "app", "core", "target", "classes"),
+                Paths.get(cwd, "app", "core", "src", "test", "resources"),
+                Paths.get(cwd, "app", "core", "target", "test-classes"),
+                getOptions("javac_core_src_options.ubuntu"),
+                getOptions("javac_core_test_options.ubuntu"));
     }
 
     @Provides
     @Singleton
     @Named("core")
-    public DependencyVisitor getCoreDependencyVisitor(@Named("coreDest") Path coreDest, @Named("coreDestTest")Path coreDestTest, DependencyVisitor.DependencyVisitorFactory factory) {
-        return factory.create(coreDest, coreDestTest);
+    public StandardJavaFileManager getCoreStandardJavaFileManager() {
+        return ToolProvider
+                .getSystemJavaCompiler()
+                .getStandardFileManager(null, null, null);
     }
-
-    @Provides
-    @Singleton
-    @Named("core")
-    public Utils getUtils(@Named("coreSrc") Path coreSrc, @Named("coreSrcTest")Path coreTest, @Named("coreDest") Path coreDest, @Named("coreDestTest")Path coreDestTest) {
-        return new Utils(coreSrc.toString(),
-                coreTest.toString(), coreDest.toString(), coreDestTest.toString());
-    }
-
 
     @Provides
     @Singleton
@@ -82,7 +85,7 @@ public class MyModule extends AbstractModule {
     private List<String> getOptions(String optionsFile) {
         try {
             //log.info(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_core_src_options.mac")).get(1));
-            return Arrays.asList(IOUtils.readLines(ClassLoader.getSystemResourceAsStream(optionsFile)).get(0).split("\\s+"));
+            return Arrays.asList(IOUtils.readLines(getClass().getClassLoader().getResourceAsStream(optionsFile)).get(0).split("\\s+"));
         } catch (IOException e) {
             log.error("error occured", e);
             throw new RuntimeException(e);

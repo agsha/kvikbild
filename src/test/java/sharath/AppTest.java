@@ -52,7 +52,7 @@ public class AppTest
      * Rigourous Test :-)
      */
     public void testApp() throws Exception {
-        App app = injector.getInstance(App.AppFactory.class).create(new String[0]);
+        App app = injector.getInstance(App.Factory.class).create(new String[0]);
         app.start();
         Builder builder = injector.getInstance(Builder.class);
     }
