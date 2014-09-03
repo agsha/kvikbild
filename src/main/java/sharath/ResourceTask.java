@@ -78,7 +78,7 @@ public class ResourceTask {
             return create(coreModule);
         }
         public ResourceTask create(Utils.CimModule module) {
-            return new ResourceTask(module, utilFactory.create(module), ext);
+            return new ResourceTask(module, utilFactory.createCoreUtils(), ext);
         }
     }
 }

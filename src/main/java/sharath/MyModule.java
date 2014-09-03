@@ -26,8 +26,8 @@ public class MyModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(JavaCompiler.class).toInstance(ToolProvider.getSystemJavaCompiler());
-        bindConstant().annotatedWith(Names.named("javaagent")).to("-javaagent:\"/nfs/sgururaj/.IntelliJIdea13/config/plugins/jr-ide-idea/lib/jrebel/jrebel.jar\" -javaagent:\"/nfs/sgururaj/.m2/repository/org/jmockit/jmockit/1.8/jmockit-1.8.jar\"");
-        //bindConstant().annotatedWith(Names.named("javaagent")).to(" ");
+        bindConstant().annotatedWith(Names.named("javaagentJrebel")).to("-javaagent:/Users/sgururaj/Library/Application Support/IntelliJIdea13/jr-ide-idea/lib/jrebel/jrebel.jar");
+        bindConstant().annotatedWith(Names.named("javaagentJmockit")).to("-javaagent:/Users/sgururaj/.m2/repository/org/jmockit/jmockit/1.8/jmockit-1.8.jar");
 
         bind(Builder.class).toProvider(Builder.BuilderProvider.class);
     }
@@ -41,20 +41,6 @@ public class MyModule extends AbstractModule {
     @Singleton
     @Named("core")
     public  Utils.CimModule getCoreCimModule(@Named("cwd")String cwd) {
-        log.error(cwd);
-        log.error("hiiiiiiiiii");
-        log.error("hiiiiiiiiii");
-        log.error("hiiiiiiiiii");
-        log.error("hiiiiiiiiii");
-        log.error("hiiiiiiiiii");
-        log.error("hiiiiiiiiii");
-        log.error("hiiiiiiiiii");
-        try {
-            log.error(IOUtils.readLines(getClass().getClassLoader().getResourceAsStream("javac_core_src_options.ubuntu")));
-        } catch (IOException e) {
-            e.printStackTrace(); // NOCOMMIT
-            throw new RuntimeException(e);
-        }
         return new Utils.CimModule(
                 Paths.get(cwd, "app", "core", "src", "main", "java"),
                 Paths.get(cwd, "app", "core", "target", "classes"),

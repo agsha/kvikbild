@@ -1,6 +1,7 @@
 package sharath;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.apache.log4j.Logger;
 
 import java.nio.file.Path;
@@ -18,6 +19,7 @@ import java.util.Map;
 /**
  * Created by sgururaj on 8/21/14.
  */
+@Singleton
 public class GraphFlusher extends Thread {
     private final Connection c;
     private CreateSchema cs;

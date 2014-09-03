@@ -1,5 +1,6 @@
 package sharath;
 
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import org.apache.log4j.Logger;
@@ -91,6 +92,14 @@ public class Utils {
     }
 
     static class Factory {
+        CimModule core;
+
+        @Inject
+        Factory(@Named("core")CimModule core) {
+            this.core = core;
+        }
+
+        public Utils createCoreUtils() {return new Utils(core);}
         public Utils create(CimModule module) {
             return new Utils(module);
         }

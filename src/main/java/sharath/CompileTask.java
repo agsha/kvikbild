@@ -28,9 +28,10 @@ public class CompileTask {
     private final JavaCompiler jc;
     private final Utils.StandardJavaFileManagerFactory fmFactory;
     private final Utils utils;
-    private String javaAgent;
+    private final String javaAgentJrebel;
+    private final String javaagentJmockit;
 
-    protected CompileTask(Utils.CimModule cimModule, Graph graph, External ext, DependencyVisitor visitor, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils utils, String javaAgent) {
+    protected CompileTask(Utils.CimModule cimModule, Graph graph, External ext, DependencyVisitor visitor, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils utils, String javaAgentJrebel, String javaagentJmockit) {
         this.cimModule = cimModule;
         this.graph = graph;
         this.ext = ext;
@@ -38,7 +39,8 @@ public class CompileTask {
         this.jc = jc;
         this.fmFactory = fmFactory;
         this.utils = utils;
-        this.javaAgent = javaAgent;
+        this.javaAgentJrebel = javaAgentJrebel;
+        this.javaagentJmockit = javaagentJmockit;
     }
 
 
@@ -152,27 +154,50 @@ public class CompileTask {
         Runnable nailgunRunnable = new Runnable() {
             @Override
             public void run() {
-                ProcessBuilder pb = new ProcessBuilder("/bin/bash", "java","-Xdebug", "-Xrunjdwp:server=y,transport=dt_socket,address=4005,suspend=n", "-Xmx1g", "-XX:MaxPermSize=512M", javaAgent, "-classpath", cimModule.javacTestOptions.get(3), "org.junit.runner.JUnitCore", "com.coverity.ces.test.CoreTestNailGunServer");
-                log.info(Joiner.on(" ").join(pb.command()));
-                pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                try {
+                    ProcessBuilder pb = new ProcessBuilder(
+                            "java",
+                            "-Xdebug",
+                            "-Xrunjdwp:server=y,transport=dt_socket,address=4005,suspend=n",
+                            "-Xmx1g",
+                            "-XX:MaxPermSize=512M",
+                            javaAgentJrebel,
+                            javaagentJmockit,
+                            "-classpath",
+                            cimModule.javacTestOptions.get(3),
+                            "org.junit.runner.JUnitCore",
+                            "com.coverity.ces.test.CoreTestNailGunServer");
 
-                Process process = null;
-                try {
-                    process = pb.start();
-                } catch (IOException e) {
-                    log.error("io exception", e);
-                    return;
+                    //ProcessBuilder pb = new ProcessBuilder("ls", "-la", "/Users/sgururaj/Library/Application Support/IntelliJIdea13/jr-ide-idea/lib/jrebel/jrebel.jar");
+                    pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                    Process process = null;
+                    try {
+                        process = pb.start();
+                    } catch (IOException e) {
+                        log.error("io exception", e);
+                        return;
+                    }
+                    try {
+                        process.waitFor();
+
+                    } catch (InterruptedException e) {
+                        log.error("Interrupted exception", e);
+                    }
+                    log.info("finished running the test");
+                } catch (RuntimeException e) {
+                    log.error("runtime exception", e);
                 }
-                try {
-                    process.waitFor();
-                } catch (InterruptedException e) {
-                   log.error("Interrupted exception", e);
-                }
-                log.info("finished running the test");
             }
         };
         Thread t = new Thread(nailgunRunnable);
         t.start();
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                log.info("hiiiiiiiiiiiiiiiiiii");
+//                System.out.println("hiiiiiiiiiiiiiiiiiiiii");
+//            }
+//        }).start();
     }
 
     static class Factory {
@@ -183,10 +208,11 @@ public class CompileTask {
         private final JavaCompiler jc;
         private final Utils.StandardJavaFileManagerFactory fmFactory;
         private final Utils.Factory utilsFactory;
-        private String javaAgent;
+        private final String javaAgentJrebel;
+        private final String javaagentJmockit;
 
         @Inject
-        public Factory(@Named("core")Utils.CimModule coreModule, Graph.Factory graphFactory, External ext, DependencyVisitor.Factory visitorFactory, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils.Factory utilsFactory, @Named("javaagent")String javaAgent) {
+        public Factory(@Named("core")Utils.CimModule coreModule, Graph.Factory graphFactory, External ext, DependencyVisitor.Factory visitorFactory, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils.Factory utilsFactory, @Named("javaagentJrebel")String javaAgentJrebel, @Named("javaagentJmockit")String javaagentJmockit) {
 
             this.coreModule = coreModule;
             this.graphFactory = graphFactory;
@@ -195,7 +221,8 @@ public class CompileTask {
             this.jc = jc;
             this.fmFactory = fmFactory;
             this.utilsFactory = utilsFactory;
-            this.javaAgent = javaAgent;
+            this.javaAgentJrebel = javaAgentJrebel;
+            this.javaagentJmockit = javaagentJmockit;
         }
         public CompileTask createCoreCompileTask() {
             return new CompileTask(coreModule,
@@ -204,8 +231,9 @@ public class CompileTask {
                     visitorFactory.create(coreModule.dest, coreModule.destTest),
                     jc,
                     fmFactory,
-                    utilsFactory.create(coreModule),
-                    javaAgent);
+                    utilsFactory.createCoreUtils(),
+                    javaAgentJrebel,
+                    javaagentJmockit);
         }
     }
 }
