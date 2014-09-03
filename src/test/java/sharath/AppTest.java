@@ -36,7 +36,7 @@ public class AppTest
     public AppTest( String testName )
     {
         super( testName );
-        cwd = injector.getInstance(Key.get(String.class, Names.named("cwd")));
+        cwd = injector.getInstance(Utils.Config.class).cwd;
         utils = injector.getInstance(Key.get(Utils.class, Names.named("core")));
     }
 
@@ -100,7 +100,7 @@ public class AppTest
     }
 
     public void testTest() throws IOException {
-        String cwd = injector.getInstance(Key.get(String.class, Names.named("cwd")));
+        String cwd = injector.getInstance(Utils.Config.class).cwd;
         BufferedReader br = Files.newBufferedReader(Paths.get(cwd,"javac_options"), Charset.defaultCharset());
         String l = br.readLine();
         l = " -classpath "+l.split(" ")[4] + " -d " + Paths.get(cwd, "app", "core", "target", "classes").toString()+

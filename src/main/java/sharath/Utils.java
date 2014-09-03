@@ -85,8 +85,8 @@ public class Utils {
     static class CimModuleFactory {
         String cwd;
 
-        CimModuleFactory(@Named("cwd") String cwd) {
-            this.cwd = cwd;
+        CimModuleFactory(Config config) {
+            this.cwd = config.cwd;
         }
     }
 
@@ -115,6 +115,19 @@ public class Utils {
             }
             return map.get(key);
 
+        }
+    }
+
+    @Singleton
+    static class Config {
+        String cwd;
+        int port;
+        int cimPort;
+
+        Config(String cwd, int port, int cimPort) {
+            this.cwd = cwd;
+            this.port = port;
+            this.cimPort = cimPort;
         }
     }
 }

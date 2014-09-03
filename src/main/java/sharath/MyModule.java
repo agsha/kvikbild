@@ -25,15 +25,18 @@ public class MyModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        String cwd = "/data00/trunk/cim";
-        bindConstant().annotatedWith(Names.named("cwd")).to(cwd);
         bind(JavaCompiler.class).toInstance(ToolProvider.getSystemJavaCompiler());
-        bindConstant().annotatedWith(Names.named("port")).to(Integer.valueOf(8000));
         bindConstant().annotatedWith(Names.named("javaagent")).to("-javaagent:\"/nfs/sgururaj/.IntelliJIdea13/config/plugins/jr-ide-idea/lib/jrebel/jrebel.jar\" -javaagent:\"/nfs/sgururaj/.m2/repository/org/jmockit/jmockit/1.8/jmockit-1.8.jar\"");
         //bindConstant().annotatedWith(Names.named("javaagent")).to(" ");
 
         bind(Builder.class).toProvider(Builder.BuilderProvider.class);
     }
+    @Provides
+    @Singleton
+    public Utils.Config getConfig() {
+        return new Utils.Config("/data00/trunk/cim", 8000, 8001);
+    }
+
     @Provides
     @Singleton
     @Named("core")
