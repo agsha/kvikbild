@@ -40,7 +40,8 @@ public class MyModule extends AbstractModule {
     @Provides
     @Singleton
     @Named("core")
-    public  Utils.CimModule getCoreCimModule(@Named("cwd")String cwd) {
+    public  Utils.CimModule getCoreCimModule(Utils.Config cfg) {
+        String cwd = cfg.cwd;
         return new Utils.CimModule(
                 Paths.get(cwd, "app", "core", "src", "main", "java"),
                 Paths.get(cwd, "app", "core", "target", "classes"),
@@ -65,8 +66,8 @@ public class MyModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public Server getJettyServer(@Named("port") int port, Builder builder) {
-        Server server = new Server(port);
+    public Server getJettyServer(Utils.Config cfg, Builder builder) {
+        Server server = new Server(cfg.port);
         server.setHandler(builder);
         return server;
     }

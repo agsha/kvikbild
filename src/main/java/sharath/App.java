@@ -4,7 +4,10 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.assistedinject.Assisted;
+import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.server.Server;
+
+import java.lang.reflect.Method;
 
 /**
  * Hello world!
