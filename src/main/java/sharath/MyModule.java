@@ -29,12 +29,15 @@ public class MyModule extends AbstractModule {
         bindConstant().annotatedWith(Names.named("javaagentJrebel")).to("-javaagent:/Users/sgururaj/Library/Application Support/IntelliJIdea13/jr-ide-idea/lib/jrebel/jrebel.jar");
         bindConstant().annotatedWith(Names.named("javaagentJmockit")).to("-javaagent:/Users/sgururaj/.m2/repository/org/jmockit/jmockit/1.8/jmockit-1.8.jar");
 
+        bind(ICimServer.class).toProvider(ICimServerProvider.class).in(Singleton.class);
+        bind(CimClassLoader.class).toProvider(CimClassLoader.Provider.class).in(Singleton.class);
         bind(Builder.class).toProvider(Builder.BuilderProvider.class);
     }
     @Provides
     @Singleton
-    public Utils.Config getConfig() {
-        return new Utils.Config("/data00/trunk/cim", 8000, 8001);
+    public Utils.Config getConfig() throws IOException {
+        String jettyClassPath = IOUtils.readLines(getClass().getClassLoader().getResourceAsStream("jetty_classpath.mac")).get(0);
+        return new Utils.Config("/data00/trunk/cim", 8000, 8001, jettyClassPath);
     }
 
     @Provides
@@ -51,8 +54,27 @@ public class MyModule extends AbstractModule {
                 Paths.get(cwd, "app", "core", "target", "classes"),
                 Paths.get(cwd, "app", "core", "src", "test", "resources"),
                 Paths.get(cwd, "app", "core", "target", "test-classes"),
-                getOptions("javac_core_src_options.ubuntu"),
-                getOptions("javac_core_test_options.ubuntu"));
+                getOptions("javac_core_src_options.mac"),
+                getOptions("javac_core_test_options.mac"));
+    }
+
+
+    @Provides
+    @Singleton
+    @Named("web")
+    public  Utils.CimModule getWebCimModule(Utils.Config cfg) {
+        String cwd = cfg.cwd;
+        return new Utils.CimModule(
+                Paths.get(cwd, "app", "web", "src", "main", "java"),
+                Paths.get(cwd, "app", "web", "target", "classes"),
+                Paths.get(cwd, "app", "web", "src", "test", "java"),
+                Paths.get(cwd, "app", "web", "target", "test-classes"),
+                Paths.get(cwd, "app", "web", "src", "main", "resources"),
+                Paths.get(cwd, "app", "web", "target", "classes"),
+                Paths.get(cwd, "app", "web", "src", "test", "resources"),
+                Paths.get(cwd, "app", "web", "target", "test-classes"),
+                getOptions("javac_web_src_options.mac"),
+                getOptions("javac_web_src_options.mac"));
     }
 
     @Provides

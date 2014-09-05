@@ -132,11 +132,14 @@ public class Utils {
         String cwd;
         int port;
         int cimPort;
+        String jettyClasspath;
 
-        Config(String cwd, int port, int cimPort) {
+        Config(String cwd, int port, int cimPort, String jettyClasspath) {
             this.cwd = cwd;
             this.port = port;
             this.cimPort = cimPort;
+            this.jettyClasspath = jettyClasspath;
         }
+
     }
 }

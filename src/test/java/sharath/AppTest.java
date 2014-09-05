@@ -30,8 +30,8 @@ public class AppTest
 {
     private static final Logger log = Logger.getLogger(AppTest.class.getName());
     private static final FileSystem fs = FileSystems.getDefault();
-    private final String cwd;
     private final Utils utils;
+    private final Utils.Config cfg;
     Injector injector = Guice.createInjector(new MyModule());
     Utils.CimModule cim;
     /**
@@ -42,7 +42,7 @@ public class AppTest
     public AppTest( String testName )
     {
         super( testName );
-        cwd = injector.getInstance(Key.get(String.class, Names.named("cwd")));
+        cfg = injector.getInstance(Utils.Config.class);
         cim = injector.getInstance(Key.get(Utils.CimModule.class, Names.named("core")));
         utils = injector.getInstance(Utils.Factory.class).createCoreUtils();
     }
@@ -94,14 +94,13 @@ public class AppTest
 
     @org.junit.Test
     public void testUrl() throws MalformedURLException {
-        //URL url = new URL("hi/there/fucker");
-        System.out.println("fuck");
-        assert false;
+        URL url = new URL("file:/asdfa");
+        log.error(url);
     }
 
 
     public void testExtractLine() throws IOException {
-        BufferedReader br = new BufferedReader(new FileReader(Paths.get(cwd, "build.log").toString()));
+        BufferedReader br = new BufferedReader(new FileReader(Paths.get(cfg.cwd, "build.log").toString()));
         String line;
         int count = 1;
         while ((line = br.readLine()) != null) {

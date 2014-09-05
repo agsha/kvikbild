@@ -18,11 +18,13 @@ public class Builder extends AbstractHandler {
     private static final Logger log = Logger.getLogger(Builder.class);
     private CompileTask compileTask;
     private ResourceTask resourceTask;
+    private ICimServer cimServer;
 
-    Builder(CompileTask compileTask, ResourceTask resourceTask) {
+    Builder(CompileTask compileTask, ResourceTask resourceTask, ICimServer cimServer) {
 
         this.compileTask = compileTask;
         this.resourceTask = resourceTask;
+        this.cimServer = cimServer;
     }
 
     @Override
@@ -46,6 +48,13 @@ public class Builder extends AbstractHandler {
             compileTask.doCompile(true);
             resourceTask.updateResources();
             compileTask.runNailgun();
+        } else if(s.equals("/restart")) {
+            try {
+                cimServer.restartCim();
+            } catch (Exception e) {
+                log.error("error while starting jetty server", e);
+            }
+
         } else {
             log.error("Unknown request from client: "+s);
         }
@@ -56,16 +65,18 @@ public class Builder extends AbstractHandler {
 
         CompileTask.Factory compileTaskFactory;
         private ResourceTask.Factory resourceFactory;
+        private ICimServer cimServer;
 
         @Inject
-        BuilderProvider(CompileTask.Factory compileTaskFactory, ResourceTask.Factory resourceFactory) {
+        BuilderProvider(CompileTask.Factory compileTaskFactory, ResourceTask.Factory resourceFactory, ICimServer cimServer) {
             this.compileTaskFactory = compileTaskFactory;
             this.resourceFactory = resourceFactory;
+            this.cimServer = cimServer;
         }
 
         @Override
         public Builder get() {
-            return new Builder(compileTaskFactory.createCoreCompileTask(), resourceFactory.createCoreResourceTask());
+            return new Builder(compileTaskFactory.createCoreCompileTask(), resourceFactory.createCoreResourceTask(), cimServer);
         }
     }
 }

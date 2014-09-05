@@ -5,4 +5,7 @@ package sharath;
  */
 public interface ICimServer {
 
+    void startJettyServer() throws Exception;
+
+    void restartCim() throws Exception;
 }
