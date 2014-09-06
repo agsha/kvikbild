@@ -2,7 +2,6 @@ package sharath;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import org.apache.log4j.Logger;
 
@@ -28,7 +27,9 @@ public class ICimServerProvider implements Provider<ICimServer> {
     @Override
     public ICimServer get() {
         ICimServer server = null;
+        ClassLoader oldThreadContextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            Thread.currentThread().setContextClassLoader(cimClassLoader);
             server = (ICimServer)cimClassLoader.loadClass("sharath.CimServer").getDeclaredConstructor(new Class[]{int.class, String.class}).newInstance(8005, cfg.cwd);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
@@ -40,6 +41,8 @@ public class ICimServerProvider implements Provider<ICimServer> {
             e.printStackTrace();
         } catch (InvocationTargetException e) {
             e.printStackTrace();
+        } finally {
+            Thread.currentThread().setContextClassLoader(oldThreadContextClassLoader);
         }
         return server;
     }
@@ -49,13 +52,16 @@ class CimClassLoader extends URLClassLoader {
     public CimClassLoader(URL[] urls, ClassLoader parent) {
         super(urls, parent);
     }
+    private static final Logger log = Logger.getLogger(CimClassLoader.class);
 
     @Override
-    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    protected synchronized Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         if(name==null) return null;
+
         Class c = null;
-        if(name.startsWith("java.")
+        if(c==null && name.startsWith("java.")
                 || name.startsWith("javax.")
+                || name.startsWith("sun.")
                 || name.startsWith("org.xml.")
                 || name.startsWith("org.w3c.")
                 || name.startsWith("sharath.ICimServer")) {
@@ -64,6 +70,9 @@ class CimClassLoader extends URLClassLoader {
             } catch (ClassNotFoundException e) {
 
             }
+        }
+        if(c==null) {
+            c = findLoadedClass(name);
         }
         if(c==null) {
             c = findClass(name);
@@ -76,32 +85,33 @@ class CimClassLoader extends URLClassLoader {
     }
     static class Provider implements com.google.inject.Provider<CimClassLoader>{
 
-        Utils.CimModule coreModule;
+        Utils.CimModule webmodule;
         private Utils.Config cfg;
         private static final Logger log = Logger.getLogger(Provider.class);
 
         @Inject
-        Provider(@Named("core")Utils.CimModule coreModule, Utils.Config cfg) {
-            this.coreModule = coreModule;
+        Provider(@Named("web")Utils.CimModule webModule, Utils.Config cfg) {
+            this.webmodule = webModule;
             this.cfg = cfg;
         }
 
         @Override
         public CimClassLoader get() {
-            String[] paths = coreModule.javacSrcOptions.get(3).split(":");
+            String[] paths = webmodule.javacSrcOptions.get(3).split(":");
             Set<URL> urlSet = new LinkedHashSet<>(paths.length);
-            for(String path:paths) {
+            for(String p:paths) {
+                String path = p.length()>0&&(p.endsWith(".jar")||p.endsWith("/"))?p:p+"/";
                 try {
                     urlSet.add(new URL("file://"+path));
                 } catch (MalformedURLException e) {
-                    log.warn("Invalid path: "+path );
+                    log.info("Invalid path: " + path);
                 }
             }
             for(String path:cfg.jettyClasspath.split(":")) {
                 try {
                     urlSet.add(new URL("file://"+path));
                 } catch (MalformedURLException e) {
-                    log.warn("Invalid path: "+path );
+                    log.info("Invalid path: " + path);
                 }
             }
 

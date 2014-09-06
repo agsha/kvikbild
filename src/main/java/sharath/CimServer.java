@@ -17,23 +17,29 @@ public class CimServer implements ICimServer{
     private final WebAppContext context;
 
     public CimServer(int port, String cwd) {
-        server = new Server(port);
-        context = new WebAppContext();
-        context.setExtraClasspath(cwd+"/app/core/target/classes");
-        context.setDescriptor(cwd + "/app/web/src/main/webapp/WEB-INF/web.xml");
-        context.setResourceBase(cwd + "/app/web/src/main/webapp/");
-        context.setWar(cwd + "/app/web/src/main/webapp");
-        context.setContextPath("/");
-        context.setParentLoaderPriority(true);
-        context.setConfigurationClasses(new String[]{WebInfConfiguration.class.getName(), WebXmlConfiguration.class.getName()});
-        server.setHandler(context);
+            Thread.currentThread().setContextClassLoader(CimServer.class.getClassLoader());
+            server = new Server(port);
+            context = new WebAppContext();
+            context.setExtraClasspath(cwd + "/app/core/target/classes");
+            context.setDescriptor(cwd + "/app/web/src/main/webapp/WEB-INF/web.xml");
+            context.setResourceBase(cwd + "/app/web/src/main/webapp/");
+            context.setWar(cwd + "/app/web/src/main/webapp");
+            context.setContextPath("/");
+            context.setParentLoaderPriority(true);
+            context.setConfigurationClasses(new String[]{WebInfConfiguration.class.getName(), WebXmlConfiguration.class.getName()});
+            server.setHandler(context);
     }
 
     @Override
     public void startJettyServer() throws Exception {
         if(!server.isRunning()) {
             System.out.println("starting jetty server");
-            server.start();
+            ClassLoader oldCls = Thread.currentThread().getContextClassLoader();
+            try {
+                server.start();
+            }finally {
+                Thread.currentThread().setContextClassLoader(oldCls);
+            }
             System.out.println("Jetty is now running");
         }
     }
@@ -41,15 +47,33 @@ public class CimServer implements ICimServer{
 
     @Override
     public void restartCim() throws Exception {
+        ClassLoader oldCls = Thread.currentThread().getContextClassLoader();
+
         if(!server.isRunning()) {
             System.out.println("starting jetty server");
-            server.start();
+
+            try {
+                Thread.currentThread().setContextClassLoader(CimServer.class.getClassLoader());
+
+                server.start();
+            } finally {
+                Thread.currentThread().setContextClassLoader(oldCls);
+
+            }
             System.out.println("Jetty is now running");
             return;
         }
         System.out.println("Jetty already running, restarting CIM");
-        context.stop();
-        context.start();
+
+        try {
+            Thread.currentThread().setContextClassLoader(CimServer.class.getClassLoader());
+
+            context.stop();
+            context.start();
+        } finally {
+            Thread.currentThread().setContextClassLoader(oldCls);
+
+        }
         System.out.println("Done restarting.");
 
     }

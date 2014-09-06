@@ -19,6 +19,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.sql.SQLException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
@@ -116,6 +117,27 @@ public class AppTest
 
     }
 
+    public void testMavn() throws Exception {
+        String [] lines = new String[]{"[INFO]",
+        "[INFO] ------------------------------------------------------------------------",
+        "[INFO] Building CES Tools 7.5.1-SNAPSHOT",
+        "[INFO] ------------------------------------------------------------------------",
+        "[INFO] ",
+        "[INFO] --- maven-dependency-plugin:2.3:list (default-cli) @ ces-tools ---",
+        "[INFO] ",
+        "[INFO] The following files have been resolved:",
+        "[INFO]    org.objenesis:objenesis:jar:2.1:test",
+        "[INFO]    org.mozilla:rhino:jar:1.7R3:compile",
+        "[INFO]    org.javassist:javassist:jar:3.18.1-GA:compile",
+        "[INFO]    org.apache.activemq:activemq-spring:jar:5.9.1:runtime",
+        "[INFO]    net.sourceforge.schemacrawler:schemacrawler:jar:10.09.01:test",};
+        MavenThings.ModuleLineProcessor test = new MavenThings.ModuleLineProcessor("core", "CES Tools", "/my/maven/repo");
+        for(String line:lines) {
+            test.process(line);
+        }
+        log.info(test.typeToPathsMap);
+        //injector.getInstance(MavenThings.Factory.class).create(new String[]{}).computePaths();
+    }
     public void testT() throws IOException {
         assertTrue(Pattern.matches(".*src\\/test\\/java.*Test\\.java$", "/data00/trunk/core/app/core/src/test/java/com/coverity/ces/service/GarbageCollectionServiceTest.java"));
     }
