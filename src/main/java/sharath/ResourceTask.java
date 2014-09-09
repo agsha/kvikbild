@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.sql.SQLException;
 import java.util.HashMap;
 
 /**
@@ -16,11 +17,11 @@ import java.util.HashMap;
  */
 public class ResourceTask {
     private static final Logger log = Logger.getLogger(ResourceTask.class);
-    Utils.CimModule module;
+    CimModule module;
     Utils utils;
     External ext;
 
-    private ResourceTask(Utils.CimModule module, Utils utils, External ext) {
+    private ResourceTask(CimModule module, Utils utils, External ext) {
         this.module = module;
         this.utils = utils;
         this.ext = ext;
@@ -65,19 +66,19 @@ public class ResourceTask {
     static class Factory {
         External ext;
         private Utils.Factory utilFactory;
-        private Utils.CimModule coreModule;
+        private CimModule.AllModules allModules;
 
         @Inject
-        Factory(External ext, Utils.Factory utilFactory, @Named("core")Utils.CimModule coreModule) {
+        Factory(External ext, Utils.Factory utilFactory, CimModule.AllModules allModules) {
             this.ext = ext;
             this.utilFactory = utilFactory;
-            this.coreModule = coreModule;
+            this.allModules = allModules;
         }
 
-        public ResourceTask createCoreResourceTask() {
-            return create(coreModule);
+        public ResourceTask createCoreResourceTask() throws SQLException {
+            return create(allModules.forName("core"));
         }
-        public ResourceTask create(Utils.CimModule module) {
+        public ResourceTask create(CimModule module) throws SQLException {
             return new ResourceTask(module, utilFactory.createCoreUtils(), ext);
         }
     }

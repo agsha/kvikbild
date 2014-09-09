@@ -1,12 +1,12 @@
 package sharath;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * @author sgururaj

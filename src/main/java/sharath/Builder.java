@@ -10,6 +10,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.sql.SQLException;
 
 /**
  * @author sgururaj
@@ -18,13 +19,13 @@ public class Builder extends AbstractHandler {
     private static final Logger log = Logger.getLogger(Builder.class);
     private CompileTask compileTask;
     private ResourceTask resourceTask;
-    private ICimServer cimServer;
+    private ICimServerProvider cimServerProvider;
 
-    Builder(CompileTask compileTask, ResourceTask resourceTask, ICimServer cimServer) {
+    Builder(CompileTask compileTask, ResourceTask resourceTask, ICimServerProvider cimServerProvider) {
 
         this.compileTask = compileTask;
         this.resourceTask = resourceTask;
-        this.cimServer = cimServer;
+        this.cimServerProvider = cimServerProvider;
     }
 
     @Override
@@ -50,7 +51,7 @@ public class Builder extends AbstractHandler {
             compileTask.runNailgun();
         } else if(s.equals("/restart")) {
             try {
-                cimServer.restartCim();
+                cimServerProvider.get().restartCim();
             } catch (Exception e) {
                 log.error("error while starting jetty server", e);
             }
@@ -65,18 +66,22 @@ public class Builder extends AbstractHandler {
 
         CompileTask.Factory compileTaskFactory;
         private ResourceTask.Factory resourceFactory;
-        private ICimServer cimServer;
+        private ICimServerProvider cimServerProvider;
 
         @Inject
-        BuilderProvider(CompileTask.Factory compileTaskFactory, ResourceTask.Factory resourceFactory, ICimServer cimServer) {
+        BuilderProvider(CompileTask.Factory compileTaskFactory, ResourceTask.Factory resourceFactory, ICimServerProvider cimServerProvider) {
             this.compileTaskFactory = compileTaskFactory;
             this.resourceFactory = resourceFactory;
-            this.cimServer = cimServer;
+            this.cimServerProvider = cimServerProvider;
         }
 
         @Override
         public Builder get() {
-            return new Builder(compileTaskFactory.createCoreCompileTask(), resourceFactory.createCoreResourceTask(), cimServer);
+            try {
+                return new Builder(compileTaskFactory.createCoreCompileTask(), resourceFactory.createCoreResourceTask(), cimServerProvider);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

@@ -5,11 +5,17 @@ import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.sql.SQLException;
+import java.util.LinkedHashSet;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * @author sgururaj
@@ -17,6 +23,7 @@ import java.util.*;
 public class ICimServerProvider implements Provider<ICimServer> {
     CimClassLoader cimClassLoader;
     private Utils.Config cfg;
+    private static final Logger log = Logger.getLogger(ICimServerProvider.class);
 
     @Inject
     public ICimServerProvider(CimClassLoader cimClassLoader, Utils.Config cfg) {
@@ -27,6 +34,30 @@ public class ICimServerProvider implements Provider<ICimServer> {
     @Override
     public ICimServer get() {
         ICimServer server = null;
+        Properties prop = new Properties();
+        try {
+            prop.load(Files.newInputStream(Paths.get(cfg.cwd, "app/core/src/test/resources/properties/build.properties")));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            prop.load(Files.newInputStream(Paths.get(cfg.cwd, "app/core/src/test/resources/properties", "build_"+System.getProperty("user.name")+".properties")));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        //log.info(prop);
+
+        System.setProperty("env.ALT_DB_SUFFIX", "true");
+        System.setProperty("commitPort", "9010");
+        System.setProperty("maindb.name", (String)prop.get("maindb.name"));
+        System.setProperty("testdb.name", (String)prop.get("testdb.name"));
+        System.setProperty("dir.log", Paths.get(cfg.cwd, "logs").toString());
+        System.setProperty("log4j.rootLogger.level", "INFO");
+        System.setProperty("ces.home", cfg.cwd);
+        System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StrErrLog");
+        System.setProperty("org.eclipse.jetty.LEVEL", "ALL");
+        System.setProperty("org.eclipse.jetty.websocket.LEVEL", "ALL");
+        //log.info(System.getProperties());
         ClassLoader oldThreadContextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(cimClassLoader);
@@ -57,11 +88,12 @@ class CimClassLoader extends URLClassLoader {
     @Override
     protected synchronized Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         if(name==null) return null;
-
+        //log.info(name);
         Class c = null;
         if(c==null && name.startsWith("java.")
                 || name.startsWith("javax.")
                 || name.startsWith("sun.")
+                || name.startsWith("com.sun.")
                 || name.startsWith("org.xml.")
                 || name.startsWith("org.w3c.")
                 || name.startsWith("sharath.ICimServer")) {
@@ -76,6 +108,8 @@ class CimClassLoader extends URLClassLoader {
         }
         if(c==null) {
             c = findClass(name);
+            if(name.startsWith("com.coverity.shared")) log.info(name + (c!=null?c.toString():"no name"));
+
         }
 
         if(resolve) {
@@ -85,19 +119,24 @@ class CimClassLoader extends URLClassLoader {
     }
     static class Provider implements com.google.inject.Provider<CimClassLoader>{
 
-        Utils.CimModule webmodule;
+        private CimModule.AllModules allModules;
         private Utils.Config cfg;
         private static final Logger log = Logger.getLogger(Provider.class);
 
         @Inject
-        Provider(@Named("web")Utils.CimModule webModule, Utils.Config cfg) {
-            this.webmodule = webModule;
+        Provider(CimModule.AllModules allModules, Utils.Config cfg) {
+            this.allModules = allModules;
             this.cfg = cfg;
         }
 
         @Override
         public CimClassLoader get() {
-            String[] paths = webmodule.javacSrcOptions.get(3).split(":");
+            String[] paths;
+            try {
+                paths = allModules.forName("web").srcRuntimeOptions.split(":");
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
             Set<URL> urlSet = new LinkedHashSet<>(paths.length);
             for(String p:paths) {
                 String path = p.length()>0&&(p.endsWith(".jar")||p.endsWith("/"))?p:p+"/";
@@ -116,14 +155,12 @@ class CimClassLoader extends URLClassLoader {
             }
 
             try {
-                urlSet.remove(new URL("file:///Users/sgururaj/projects/cim/app/core/target/test-classes"));
-                urlSet.remove(new URL("file:///Users/sgururaj/projects/cim/app/core/target/classes"));
+                //urlSet.remove(new URL("file:///Users/sgururaj/projects/cim/app/core/target/test-classes/"));
+                //urlSet.remove(new URL("file:///Users/sgururaj/projects/cim/app/core/target/classes/"));
                 urlSet.add(new URL("file:///Users/sgururaj/projects/kvikbild/target/classes/"));
-
-
             } catch (MalformedURLException e) {
             }
-            log.info(urlSet);
+            //log.info(urlSet);
             return new CimClassLoader(urlSet.toArray(new URL[]{}), Provider.class.getClassLoader());
         }
     }

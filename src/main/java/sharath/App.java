@@ -3,11 +3,8 @@ package sharath;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import com.google.inject.assistedinject.Assisted;
-import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.server.Server;
-
-import java.lang.reflect.Method;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 /**
  * Hello world!
@@ -29,6 +26,11 @@ public class App
     }
 
     public static void main( String[] args ) throws Exception {
+        System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StrErrLog");
+        System.setProperty("org.eclipse.jetty.LEVEL", "ALL");
+        System.setProperty("org.eclipse.jetty.websocket.LEVEL", "ALL");
+
+
         Injector injector = Guice.createInjector(new MyModule());
         App app = injector.getInstance(Factory.class).create(args);
         app.start();

@@ -1,21 +1,17 @@
 package sharath;
 
-import com.google.inject.*;
-import com.google.inject.assistedinject.FactoryModuleBuilder;
-import com.google.inject.name.Named;
+import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.name.Names;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.eclipse.jetty.server.Server;
 
 import javax.tools.JavaCompiler;
-import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.sql.*;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * @author sgururaj
@@ -35,73 +31,19 @@ public class MyModule extends AbstractModule {
     }
     @Provides
     @Singleton
-    public Utils.Config getConfig() throws IOException {
+    public Utils.Config getConfig(Utils.Config.Factory factory) throws IOException {
         String jettyClassPath = IOUtils.readLines(getClass().getClassLoader().getResourceAsStream("jetty_classpath.mac")).get(0);
-        return new Utils.Config("/data00/trunk/cim", 8000, 8001, jettyClassPath);
+        return factory.create("/Users/sgururaj/projects/cim", 8000, 8001, jettyClassPath);
     }
 
-    @Provides
-    @Singleton
-    @Named("core")
-    public  Utils.CimModule getCoreCimModule(Utils.Config cfg) {
-        String cwd = cfg.cwd;
-        return new Utils.CimModule(
-                Paths.get(cwd, "app", "core", "src", "main", "java"),
-                Paths.get(cwd, "app", "core", "target", "classes"),
-                Paths.get(cwd, "app", "core", "src", "test", "java"),
-                Paths.get(cwd, "app", "core", "target", "test-classes"),
-                Paths.get(cwd, "app", "core", "src", "main", "resources"),
-                Paths.get(cwd, "app", "core", "target", "classes"),
-                Paths.get(cwd, "app", "core", "src", "test", "resources"),
-                Paths.get(cwd, "app", "core", "target", "test-classes"),
-                getOptions("javac_core_src_options.mac"),
-                getOptions("javac_core_test_options.mac"));
-    }
-
-
-    @Provides
-    @Singleton
-    @Named("web")
-    public  Utils.CimModule getWebCimModule(Utils.Config cfg) {
-        String cwd = cfg.cwd;
-        return new Utils.CimModule(
-                Paths.get(cwd, "app", "web", "src", "main", "java"),
-                Paths.get(cwd, "app", "web", "target", "classes"),
-                Paths.get(cwd, "app", "web", "src", "test", "java"),
-                Paths.get(cwd, "app", "web", "target", "test-classes"),
-                Paths.get(cwd, "app", "web", "src", "main", "resources"),
-                Paths.get(cwd, "app", "web", "target", "classes"),
-                Paths.get(cwd, "app", "web", "src", "test", "resources"),
-                Paths.get(cwd, "app", "web", "target", "test-classes"),
-                getOptions("javac_web_src_options.mac"),
-                getOptions("javac_web_src_options.mac"));
-    }
-
-    @Provides
-    @Singleton
-    @Named("core")
-    public StandardJavaFileManager getCoreStandardJavaFileManager() {
-        return ToolProvider
-                .getSystemJavaCompiler()
-                .getStandardFileManager(null, null, null);
-    }
 
     @Provides
     @Singleton
     public Server getJettyServer(Utils.Config cfg, Builder builder) {
+
         Server server = new Server(cfg.port);
         server.setHandler(builder);
         return server;
-    }
-
-    private List<String> getOptions(String optionsFile) {
-        try {
-            //log.info(IOUtils.readLines(ClassLoader.getSystemResourceAsStream("javac_core_src_options.mac")).get(1));
-            return Arrays.asList(IOUtils.readLines(getClass().getClassLoader().getResourceAsStream(optionsFile)).get(0).split("\\s+"));
-        } catch (IOException e) {
-            log.error("error occured", e);
-            throw new RuntimeException(e);
-        }
     }
 
     @Provides

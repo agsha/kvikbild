@@ -1,15 +1,18 @@
 package sharath;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import org.apache.log4j.Logger;
 
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by sgururaj on 8/22/14.
@@ -55,34 +58,6 @@ public class Utils {
                 .replaceAll(module.destTestResource.toString(), module.srcTestResource.toString());
     }
 
-    static class CimModule {
-        Path src;
-        Path dest;
-        Path srcTest;
-        Path destTest;
-        Path srcResource;
-        Path destResource;
-        Path srcTestResource;
-        Path destTestResource;
-        List<String> javacSrcOptions;
-        List<String> javacTestOptions;
-
-        CimModule(Path src, Path dest, Path srcTest, Path destTest, Path srcResource, Path destResource, Path srcTestResource, Path destTestResource, List<String> javacSrcOptions, List<String> javacTestOptions) {
-            this.src = src;
-            this.dest = dest;
-            this.srcTest = srcTest;
-            this.destTest = destTest;
-            this.srcResource = srcResource;
-            this.destResource = destResource;
-            this.srcTestResource = srcTestResource;
-            this.destTestResource = destTestResource;
-            this.javacSrcOptions = javacSrcOptions;
-            this.javacTestOptions = javacTestOptions;
-        }
-
-
-    }
-
     static class CimModuleFactory {
         String cwd;
 
@@ -92,14 +67,16 @@ public class Utils {
     }
 
     static class Factory {
-        CimModule core;
+
+        private CimModule.AllModules allModules;
 
         @Inject
-        Factory(@Named("core")CimModule core) {
-            this.core = core;
+        Factory(CimModule.AllModules allModules) {
+
+            this.allModules = allModules;
         }
 
-        public Utils createCoreUtils() {return new Utils(core);}
+        public Utils createCoreUtils() throws SQLException {return new Utils(allModules.forName("core"));}
         public Utils create(CimModule module) {
             return new Utils(module);
         }
@@ -133,12 +110,38 @@ public class Utils {
         int port;
         int cimPort;
         String jettyClasspath;
+        Map<String, String> moduleToPath;
 
-        Config(String cwd, int port, int cimPort, String jettyClasspath) {
+        Config(String cwd, int port, int cimPort, String jettyClasspath, Map<String, String> moduleToPath) {
             this.cwd = cwd;
             this.port = port;
             this.cimPort = cimPort;
             this.jettyClasspath = jettyClasspath;
+            this.moduleToPath = moduleToPath;
+        }
+        static class Factory {
+            public Config create(String cwd, int port, int cimPort, String jettyClasspath) {
+                Map<String, String> moduleToPath = new HashMap<>();
+
+                List<String> forbidden = ImmutableList.of(
+                        "ces", "",
+                        "base", "base",
+                        "license", "base/license",
+                        "cimlistener", "base/cimlistener",
+                        "structext", "base/structext",
+                        "app", "app",
+                        "core", "app/core",
+                        "ws", "app/ws",
+                        "web", "app/web",
+                        "findbugs-checkers", "app/findbugs-checkers",
+                        "ces-tools", "ces-tools",
+                        "tomcat", "tomcat");
+                for(int i=0; i<forbidden.size(); i+=2) {
+                    moduleToPath.put(forbidden.get(i), Paths.get(cwd, forbidden.get(i + 1)).toString());
+                }
+                return new Config(cwd, port, cimPort, jettyClasspath, moduleToPath);
+
+            }
         }
 
     }

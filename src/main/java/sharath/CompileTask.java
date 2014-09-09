@@ -13,7 +13,11 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.*;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -21,7 +25,7 @@ import java.util.regex.Pattern;
  */
 public class CompileTask {
     private static final Logger log = Logger.getLogger(CompileTask.class);
-    private final Utils.CimModule cimModule;
+    private final CimModule cimModule;
     private final Graph graph;
     private final External ext;
     private final DependencyVisitor visitor;
@@ -31,7 +35,7 @@ public class CompileTask {
     private final String javaAgentJrebel;
     private final String javaagentJmockit;
 
-    protected CompileTask(Utils.CimModule cimModule, Graph graph, External ext, DependencyVisitor visitor, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils utils, String javaAgentJrebel, String javaagentJmockit) {
+    protected CompileTask(CimModule cimModule, Graph graph, External ext, DependencyVisitor visitor, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils utils, String javaAgentJrebel, String javaagentJmockit) {
         this.cimModule = cimModule;
         this.graph = graph;
         this.ext = ext;
@@ -201,7 +205,7 @@ public class CompileTask {
     }
 
     static class Factory {
-        private final Utils.CimModule coreModule;
+        private CimModule.AllModules allModules;
         private final Graph.Factory graphFactory;
         private final External ext;
         private final DependencyVisitor.Factory visitorFactory;
@@ -212,9 +216,9 @@ public class CompileTask {
         private final String javaagentJmockit;
 
         @Inject
-        public Factory(@Named("core")Utils.CimModule coreModule, Graph.Factory graphFactory, External ext, DependencyVisitor.Factory visitorFactory, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils.Factory utilsFactory, @Named("javaagentJrebel")String javaAgentJrebel, @Named("javaagentJmockit")String javaagentJmockit) {
+        public Factory(CimModule.AllModules allModules, Graph.Factory graphFactory, External ext, DependencyVisitor.Factory visitorFactory, JavaCompiler jc, Utils.StandardJavaFileManagerFactory fmFactory, Utils.Factory utilsFactory, @Named("javaagentJrebel")String javaAgentJrebel, @Named("javaagentJmockit")String javaagentJmockit) {
+            this.allModules = allModules;
 
-            this.coreModule = coreModule;
             this.graphFactory = graphFactory;
             this.ext = ext;
             this.visitorFactory = visitorFactory;
@@ -224,7 +228,8 @@ public class CompileTask {
             this.javaAgentJrebel = javaAgentJrebel;
             this.javaagentJmockit = javaagentJmockit;
         }
-        public CompileTask createCoreCompileTask() {
+        public CompileTask createCoreCompileTask() throws SQLException {
+            CimModule coreModule = allModules.forName("core");
             return new CompileTask(coreModule,
                     graphFactory.getForName("core"),
                     ext,

@@ -55,26 +55,31 @@ public class GraphFlusher extends Thread {
             if (!graph.isDirty()) return;
             long time = System.currentTimeMillis();
             cs.create(c);
-            c.setAutoCommit(false);
-            String sql = "insert into "+tableName+" (classpath, deps, class_mod_time) values(?, ?, ?)";
-            PreparedStatement ps = c.prepareStatement(sql);
-            int count = 0;
-            for (Map.Entry<Path, Node> entry : graph.nodes.entrySet()) {
-                Node value = entry.getValue();
-                StringBuffer sb = new StringBuffer();
-                if (value.out.size() == 0) continue;
-                for (Node node : value.out) {
-                    sb.append(",");
-                    sb.append(node.path.toString());
+
+            try {
+                c.setAutoCommit(false);
+                String sql = "insert into " + tableName + " (classpath, deps, class_mod_time) values(?, ?, ?)";
+                PreparedStatement ps = c.prepareStatement(sql);
+                int count = 0;
+                for (Map.Entry<Path, Node> entry : graph.nodes.entrySet()) {
+                    Node value = entry.getValue();
+                    StringBuffer sb = new StringBuffer();
+                    if (value.out.size() == 0) continue;
+                    for (Node node : value.out) {
+                        sb.append(",");
+                        sb.append(node.path.toString());
+                    }
+                    long classtime = value.classModTime != null ? value.classModTime.toMillis() : 0;
+                    ps.setString(1, value.path.toString());
+                    ps.setString(2, sb.substring(1));
+                    ps.setLong(3, classtime);
+                    ps.addBatch();
                 }
-                long classtime = value.classModTime != null ? value.classModTime.toMillis() : 0;
-                ps.setString(1, value.path.toString());
-                ps.setString(2, sb.substring(1));
-                ps.setLong(3, classtime);
-                ps.addBatch();
+                ps.executeBatch();
+                c.commit();
+            } finally {
+                c.setAutoCommit(true);
             }
-            ps.executeBatch();
-            c.commit();
             graph.setDirty(false);
             log.info("flushed graph to disk in time(ms):" + (System.currentTimeMillis() - time));
         }

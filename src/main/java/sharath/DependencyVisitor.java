@@ -29,6 +29,11 @@
  */
 package sharath;
 
+import org.apache.log4j.Logger;
+import org.objectweb.asm.*;
+import org.objectweb.asm.signature.SignatureReader;
+import org.objectweb.asm.signature.SignatureVisitor;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -37,14 +42,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
-import com.google.inject.name.Names;
-import org.apache.log4j.Logger;
-import org.objectweb.asm.*;
-import org.objectweb.asm.signature.SignatureReader;
-import org.objectweb.asm.signature.SignatureVisitor;
 
 /**
  * DependencyVisitor

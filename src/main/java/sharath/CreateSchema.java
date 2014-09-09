@@ -15,7 +15,15 @@ public class CreateSchema {
                   "classpath text PRIMARY KEY NOT NULL,\n" +
                   "deps text not null,\n" +
                   "class_mod_time BIGINT not null\n" +
-                  ")\n"
+                  ")\n",
+          "drop table if exists module",
+          "create table module (\n" +
+                  "\tname text,\n" +
+                  "\tdisplayName text,\n" +
+                  "\tphase text,\n" +
+                  "\tclasspath text,\n" +
+                  "\tpath text\n" +
+                  "\t)"
         };
         for (String stmt : stmts) {
             PreparedStatement ps = c.prepareStatement(stmt);
