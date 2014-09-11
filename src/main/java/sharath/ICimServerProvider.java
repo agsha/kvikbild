@@ -1,5 +1,6 @@
 package sharath;
 
+import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
@@ -23,12 +24,14 @@ import java.util.Set;
 public class ICimServerProvider implements Provider<ICimServer> {
     CimClassLoader cimClassLoader;
     private Utils.Config cfg;
+    private CimModule.AllModules allModules;
     private static final Logger log = Logger.getLogger(ICimServerProvider.class);
 
     @Inject
-    public ICimServerProvider(CimClassLoader cimClassLoader, Utils.Config cfg) {
+    public ICimServerProvider(CimClassLoader cimClassLoader, Utils.Config cfg, CimModule.AllModules allModules) {
         this.cimClassLoader = cimClassLoader;
         this.cfg = cfg;
+        this.allModules = allModules;
     }
 
     @Override
@@ -52,29 +55,62 @@ public class ICimServerProvider implements Provider<ICimServer> {
         System.setProperty("maindb.name", (String)prop.get("maindb.name"));
         System.setProperty("testdb.name", (String)prop.get("testdb.name"));
         System.setProperty("dir.log", Paths.get(cfg.cwd, "logs").toString());
-        System.setProperty("log4j.rootLogger.level", "INFO");
+        System.setProperty("log4j.rootLogger.level", "ALL");
         System.setProperty("ces.home", cfg.cwd);
         System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StrErrLog");
         System.setProperty("org.eclipse.jetty.LEVEL", "ALL");
         System.setProperty("org.eclipse.jetty.websocket.LEVEL", "ALL");
-        //log.info(System.getProperties());
-        ClassLoader oldThreadContextClassLoader = Thread.currentThread().getContextClassLoader();
+        System.setProperty("java.io.tmpdir", "/tmp");
+
+        String[]paths;
         try {
-            Thread.currentThread().setContextClassLoader(cimClassLoader);
-            server = (ICimServer)cimClassLoader.loadClass("sharath.CimServer").getDeclaredConstructor(new Class[]{int.class, String.class}).newInstance(8005, cfg.cwd);
-        } catch (ClassNotFoundException e) {
+            paths = allModules.forName("web").srcRuntimeOptions.split(":");
+        } catch (SQLException e) {
             throw new RuntimeException(e);
-        } catch (InstantiationException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } finally {
-            Thread.currentThread().setContextClassLoader(oldThreadContextClassLoader);
         }
+        Set<String> targetClasses = new LinkedHashSet<>(paths.length);
+        for(String p:paths) {
+            p = p.trim();
+            if(!p.contains(Paths.get("target", "classes").toString())) continue;
+            if(!Files.isDirectory(Paths.get(p))) continue;
+            if(!p.endsWith("/")) p = p+"/";
+            targetClasses.add(p);
+        }
+
+        final String extraClasspath = Joiner.on(",").join(targetClasses);
+
+        log.info(extraClasspath);
+        class CimStarter implements Runnable{
+            Object uncastedServer;
+
+            @Override
+            public void run() {
+                Thread.currentThread().setContextClassLoader(cimClassLoader);
+                try {
+                    uncastedServer = cimClassLoader.loadClass("sharath.CimServer").getDeclaredConstructor(new Class[]{int.class, String.class, String.class}).newInstance(8005, cfg.cwd, extraClasspath);
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                } catch (InstantiationException e) {
+                    throw new RuntimeException(e);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                } catch (NoSuchMethodException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+        CimStarter cimStarter = new CimStarter();
+        Thread t = new Thread(cimStarter);
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            log.info(e);
+        }
+        server = (ICimServer)cimStarter.uncastedServer;
         return server;
     }
 }

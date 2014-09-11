@@ -27,11 +27,14 @@ import java.util.List;
  */
 public class CimServer implements ICimServer {
 
-    private final WebAppContext context;
+    private WebAppContext context;
     Server server;
+    int port;
+    String cwd;
 
     public CimServer(int port, String cwd) throws IOException {
-        Thread.currentThread().setContextClassLoader(CimServer.class.getClassLoader());
+        this.port = port;
+        this.cwd = cwd;
         server = new Server(port);
         context = new WebAppContext();
         context.setExtraClasspath(cwd + "/app/core/target/classes/");
@@ -52,7 +55,12 @@ public class CimServer implements ICimServer {
         {
             if (!scratchDir.mkdirs())
             {
-                throw new IOException("Unable to create scratch directory: " + scratchDir);
+                try {
+                    throw new IOException("Unable to create scratch directory: " + scratchDir);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return;
+                }
             }
         }
         // Set JSP to use Standard JavaC always
@@ -63,10 +71,12 @@ public class CimServer implements ICimServer {
         JettyJasperInitializer sci = new JettyJasperInitializer();
         ServletContainerInitializersStarter sciStarter = new ServletContainerInitializersStarter(context);
         ContainerInitializer initializer = new ContainerInitializer(sci, null);
-        List<ContainerInitializer> initializers = new ArrayList<ContainerInitializer>();
+        List<ContainerInitializer> initializers = new ArrayList<>();
         initializers.add(initializer);
 
         context.setAttribute("org.eclipse.jetty.containerInitializers", initializers);
+        context.setAttribute("org.eclipse.jetty.server.webapp.ContainerIncludeJarPattern",
+                ".*/[^/]*servlet-api-[^/]*\\.jar$|.*/javax.servlet.jsp.jstl-.*\\.jar$|.*/[^/]*taglibs.*\\.jar$");
         context.addBean(sciStarter, true);
         // Set Classloader of Context to be sane (needed for JSTL)
         // JSP requires a non-System classloader, this simply wraps the
@@ -85,54 +95,43 @@ public class CimServer implements ICimServer {
         holderJsp.setInitParameter("compilerSourceVM","1.7");
         holderJsp.setInitParameter("keepgenerated","true");
         context.addServlet(holderJsp,"*.jsp");
+
+    }
+
+
+    @Override
+    public void restartCim() throws Exception {
+        int[][] a ;
+        ClassLoader oldCl = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+            if (!server.isRunning()) {
+                System.out.println("starting jetty server");
+
+                server.start();
+
+                System.out.println("Jetty is now running");
+                return;
+            }
+            System.out.println("Jetty already running, restarting CIM");
+
+            context.stop();
+            context.start();
+            System.out.println("Done restarting.");
+        } finally {
+            Thread.currentThread().setContextClassLoader(oldCl);
+
+        }
+
     }
 
     @Override
     public void startJettyServer() throws Exception {
         if (!server.isRunning()) {
             System.out.println("starting jetty server");
-            ClassLoader oldCls = Thread.currentThread().getContextClassLoader();
-            try {
-                server.start();
-            } finally {
-                Thread.currentThread().setContextClassLoader(oldCls);
-            }
+            server.start();
             System.out.println("Jetty is now running");
         }
-    }
-
-
-    @Override
-    public void restartCim() throws Exception {
-        ClassLoader oldCls = Thread.currentThread().getContextClassLoader();
-
-        if (!server.isRunning()) {
-            System.out.println("starting jetty server");
-
-            try {
-                Thread.currentThread().setContextClassLoader(CimServer.class.getClassLoader());
-
-                server.start();
-            } finally {
-                Thread.currentThread().setContextClassLoader(oldCls);
-
-            }
-            System.out.println("Jetty is now running");
-            return;
-        }
-        System.out.println("Jetty already running, restarting CIM");
-
-        try {
-            Thread.currentThread().setContextClassLoader(CimServer.class.getClassLoader());
-
-            context.stop();
-            context.start();
-        } finally {
-            Thread.currentThread().setContextClassLoader(oldCls);
-
-        }
-        System.out.println("Done restarting.");
 
     }
-
 }

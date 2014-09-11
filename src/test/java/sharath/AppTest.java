@@ -9,10 +9,7 @@ import org.apache.log4j.Logger;
 import org.junit.Ignore;
 
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -80,6 +77,19 @@ public class AppTest
         log.info("common to both: "+ss);
     }
 
+
+    public void testList() throws SQLException {
+        CimModule.AllModules all = injector.getInstance(CimModule.AllModules.class);
+        for (String path : all.forName("web").srcRuntimeOptions.split(":")) {
+            Path p = Paths.get(path);
+            log.info(p.getFileName().toString());
+        }
+        for(String path:cfg.jettyClasspath.split(":")) {
+            Path p = Paths.get(path);
+            log.info(p.getFileName().toString());
+
+        }
+    }
 
     @org.junit.Test
     public void testCim() throws SQLException {
