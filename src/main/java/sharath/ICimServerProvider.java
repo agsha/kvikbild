@@ -58,8 +58,8 @@ public class ICimServerProvider implements Provider<ICimServer> {
         System.setProperty("log4j.rootLogger.level", "ALL");
         System.setProperty("ces.home", cfg.cwd);
         System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StrErrLog");
-        System.setProperty("org.eclipse.jetty.LEVEL", "ALL");
-        System.setProperty("org.eclipse.jetty.websocket.LEVEL", "ALL");
+        System.setProperty("org.eclipse.jetty.LEVEL", "WARN");
+        System.setProperty("org.eclipse.jetty.websocket.LEVEL", "WARN");
         System.setProperty("java.io.tmpdir", "/tmp");
 
         String[]paths;
@@ -71,12 +71,19 @@ public class ICimServerProvider implements Provider<ICimServer> {
         Set<String> targetClasses = new LinkedHashSet<>(paths.length);
         for(String p:paths) {
             p = p.trim();
-            if(!p.contains(Paths.get("target", "classes").toString())) continue;
+            //if(!p.contains(Paths.get("target", "classes").toString())) continue;
             if(!Files.isDirectory(Paths.get(p))) continue;
             if(!p.endsWith("/")) p = p+"/";
-            targetClasses.add(p);
+            targetClasses.add("file://"+p);
+        }
+        //targetClasses.add("file://"+cfg.cwd+"/app/web/src/main/webapp/");
+        //targetClasses.add("file://"+cfg.cwd+"/app/web/src/main/webapp/WEB-INF/");
+
+        for (URL url : cimClassLoader.getURLs()) {
+            targetClasses.add(url.toString());
         }
 
+        //final String extraClasspath = Joiner.on(",").join(cimClassLoader.getURLs());
         final String extraClasspath = Joiner.on(",").join(targetClasses);
 
         log.info(extraClasspath);
@@ -126,7 +133,7 @@ class CimClassLoader extends URLClassLoader {
         if(name==null) return null;
         //log.info(name);
         Class c = null;
-        if(c==null && name.startsWith("java.")
+        if(name.startsWith("java.")
                 || name.startsWith("javax.")
                 || name.startsWith("sun.")
                 || name.startsWith("com.sun.")
@@ -142,10 +149,22 @@ class CimClassLoader extends URLClassLoader {
         if(c==null) {
             c = findLoadedClass(name);
         }
+        boolean fresh = false;
         if(c==null) {
-            c = findClass(name);
-            if(name.startsWith("com.coverity.shared")) log.info(name + (c!=null?c.toString():"no name"));
+            try {
+                c = findClass(name);
+                fresh = true;
+            } catch (ClassNotFoundException e) {
+                if(!name.startsWith("com")&&!name.startsWith("org")) {
+                    log.info("couldnt find "+name);
+                    //log.info(e);
+                }
+                throw e;
+            }
 
+        }
+        if(c!=null&&fresh) {
+            //log.info("found class: "+name);
         }
 
         if(resolve) {
@@ -176,6 +195,7 @@ class CimClassLoader extends URLClassLoader {
             Set<URL> urlSet = new LinkedHashSet<>(paths.length);
             for(String p:paths) {
                 String path = p.length()>0&&(p.endsWith(".jar")||p.endsWith("/"))?p:p+"/";
+                if(path.contains(Paths.get("target", "classes").toString())&&Files.isDirectory(Paths.get(path))) continue;
                 try {
                     urlSet.add(new URL("file://"+path));
                 } catch (MalformedURLException e) {
@@ -196,7 +216,7 @@ class CimClassLoader extends URLClassLoader {
                 urlSet.add(new URL("file:///Users/sgururaj/projects/kvikbild/target/classes/"));
             } catch (MalformedURLException e) {
             }
-            //log.info(urlSet);
+            log.info(urlSet);
             return new CimClassLoader(urlSet.toArray(new URL[]{}), Provider.class.getClassLoader());
         }
     }

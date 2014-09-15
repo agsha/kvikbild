@@ -75,7 +75,7 @@ class CimModule {
             PreparedStatement ps=null;
             ResultSet rs=null;
             try {
-                log.info(ps);
+                //log.info(ps);
                 ps = conn.prepareStatement(sql);
                 ps.setString(1, moduleName);
                 rs = ps.executeQuery();

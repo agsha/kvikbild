@@ -8,6 +8,7 @@ import org.eclipse.jetty.apache.jsp.JettyJasperInitializer;
 import org.eclipse.jetty.plus.annotation.ContainerInitializer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.webapp.WebAppClassLoader;
 import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.jetty.webapp.WebInfConfiguration;
 import org.eclipse.jetty.webapp.WebXmlConfiguration;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -32,18 +34,18 @@ public class CimServer implements ICimServer {
     int port;
     String cwd;
 
-    public CimServer(int port, String cwd) throws IOException {
+    public CimServer(int port, String cwd, String extraClasspath) throws IOException {
         this.port = port;
         this.cwd = cwd;
         server = new Server(port);
         context = new WebAppContext();
-        context.setExtraClasspath(cwd + "/app/core/target/classes/");
         context.setDescriptor(cwd + "/app/web/src/main/webapp/WEB-INF/web.xml");
         context.setResourceBase(cwd + "/app/web/src/main/webapp/");
-        context.setWar(cwd + "/app/web/src/main/webapp");
+        context.setWar(cwd + "/app/web/src/main/webapp/");
         context.setContextPath("/");
         context.setParentLoaderPriority(true);
         context.setConfigurationClasses(new String[]{WebInfConfiguration.class.getName(), WebXmlConfiguration.class.getName()});
+        context.setExtraClasspath(extraClasspath);
         server.setHandler(context);
 
         //jsp settings
@@ -64,7 +66,6 @@ public class CimServer implements ICimServer {
             }
         }
         // Set JSP to use Standard JavaC always
-        System.out.println("hi");
         System.setProperty("org.apache.jasper.compiler.disablejsr199","false");
         context.setAttribute("javax.servlet.context.tempdir",scratchDir);
         context.setAttribute(InstanceManager.class.getName(), new SimpleInstanceManager());
@@ -82,8 +83,8 @@ public class CimServer implements ICimServer {
         // JSP requires a non-System classloader, this simply wraps the
         // embedded System classloader in a way that makes it suitable
         // for JSP to use
-        ClassLoader jspClassLoader = new URLClassLoader(new URL[0], this.getClass().getClassLoader());
-        context.setClassLoader(jspClassLoader);
+        //ClassLoader jspClassLoader = new URLClassLoader(new URL[0], this.getClass().getClassLoader());
+        //context.setClassLoader(jspClassLoader);
 
         // Add JSP Servlet (must be named "jsp")
         ServletHolder holderJsp = new ServletHolder("jsp",JspServlet.class);
@@ -105,19 +106,23 @@ public class CimServer implements ICimServer {
         ClassLoader oldCl = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+            // force the context to create a new classloader.
+            //context.setClassLoader(null);
             if (!server.isRunning()) {
                 System.out.println("starting jetty server");
-
                 server.start();
 
                 System.out.println("Jetty is now running");
+                System.out.println((context.getClassPath()));
+                System.out.println("Done restarting.");
+                System.out.println("hiiiiiiii" + context.getClassLoader().loadClass("messages"));
+
                 return;
             }
             System.out.println("Jetty already running, restarting CIM");
-
             context.stop();
             context.start();
-            System.out.println("Done restarting.");
+
         } finally {
             Thread.currentThread().setContextClassLoader(oldCl);
 
