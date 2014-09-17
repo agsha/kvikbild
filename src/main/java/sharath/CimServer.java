@@ -33,10 +33,14 @@ public class CimServer implements ICimServer {
     Server server;
     int port;
     String cwd;
+    private final String extraClasspath;
+    private final URL[] extraUrlPath;
 
-    public CimServer(int port, String cwd, String extraClasspath) throws IOException {
+    public CimServer(int port, String cwd, String extraClasspath, URL[] extraUrlPath) throws IOException {
         this.port = port;
         this.cwd = cwd;
+        this.extraClasspath = extraClasspath;
+        this.extraUrlPath = extraUrlPath;
         server = new Server(port);
         context = new WebAppContext();
         context.setDescriptor(cwd + "/app/web/src/main/webapp/WEB-INF/web.xml");
@@ -103,11 +107,12 @@ public class CimServer implements ICimServer {
     @Override
     public void restartCim() throws Exception {
         int[][] a ;
-        ClassLoader oldCl = Thread.currentThread().getContextClassLoader();
+        URLClassLoader urlClassLoader = new URLClassLoader(extraUrlPath, getClass().getClassLoader());
+        ClassLoader oldCls = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+            Thread.currentThread().setContextClassLoader(urlClassLoader);
             // force the context to create a new classloader.
-            //context.setClassLoader(null);
+            context.setClassLoader(urlClassLoader);
             if (!server.isRunning()) {
                 System.out.println("starting jetty server");
                 server.start();
@@ -115,17 +120,15 @@ public class CimServer implements ICimServer {
                 System.out.println("Jetty is now running");
                 System.out.println((context.getClassPath()));
                 System.out.println("Done restarting.");
-                System.out.println("hiiiiiiii" + context.getClassLoader().loadClass("messages"));
+                System.out.println("hiiiiiiii" + context.getClassLoader().loadClass("com.coverity.ces.util.CIMResourceBundleMessageSource") + context.getClassLoader().getParent());
 
                 return;
             }
             System.out.println("Jetty already running, restarting CIM");
             context.stop();
             context.start();
-
         } finally {
-            Thread.currentThread().setContextClassLoader(oldCl);
-
+            Thread.currentThread().setContextClassLoader(oldCls);
         }
 
     }
