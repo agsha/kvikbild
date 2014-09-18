@@ -4,7 +4,8 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -24,7 +25,7 @@ import java.util.regex.Pattern;
  * Created by sgururaj on 8/25/14.
  */
 public class CompileTask {
-    private static final Logger log = Logger.getLogger(CompileTask.class);
+    private static final Logger log = LogManager.getLogger(CompileTask.class);
     private final CimModule cimModule;
     private final Graph graph;
     private final External ext;

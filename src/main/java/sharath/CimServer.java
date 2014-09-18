@@ -13,8 +13,7 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.jetty.webapp.WebInfConfiguration;
 import org.eclipse.jetty.webapp.WebXmlConfiguration;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -110,9 +109,9 @@ public class CimServer implements ICimServer {
         URLClassLoader urlClassLoader = new URLClassLoader(extraUrlPath, getClass().getClassLoader());
         ClassLoader oldCls = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(urlClassLoader);
+            Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
             // force the context to create a new classloader.
-            context.setClassLoader(urlClassLoader);
+            //context.setClassLoader(urlClassLoader);
             if (!server.isRunning()) {
                 System.out.println("starting jetty server");
                 server.start();

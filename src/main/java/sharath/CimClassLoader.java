@@ -1,7 +1,8 @@
 package sharath;
 
 import com.google.inject.Inject;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -19,7 +20,7 @@ class CimClassLoader extends URLClassLoader {
     public CimClassLoader(URL[] urls, ClassLoader parent) {
         super(urls, parent);
     }
-    private static final Logger log = Logger.getLogger(CimClassLoader.class);
+    private static final Logger log = LogManager.getLogger(CimClassLoader.class);
 
     @Override
     protected synchronized Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
@@ -72,7 +73,7 @@ class CimClassLoader extends URLClassLoader {
 
         private CimModule.AllModules allModules;
         private Utils.Config cfg;
-        private static final Logger log = Logger.getLogger(Provider.class);
+        private static final Logger log = LogManager.getLogger(Provider.class);
 
         @Inject
         Provider(CimModule.AllModules allModules, Utils.Config cfg) {
@@ -91,7 +92,7 @@ class CimClassLoader extends URLClassLoader {
             Set<URL> urlSet = new LinkedHashSet<>(paths.length);
             for(String p:paths) {
                 String path = p.length()>0&&(p.endsWith(".jar")||p.endsWith("/"))?p:p+"/";
-                if(path.contains(Paths.get("target", "classes").toString())&& Files.isDirectory(Paths.get(path)) && path.contains("core")) continue;
+                if(path.contains(Paths.get("target", "classes").toString())&& Files.isDirectory(Paths.get(path)) ) continue;
                 try {
                     urlSet.add(new URL("file://"+path));
                 } catch (MalformedURLException e) {

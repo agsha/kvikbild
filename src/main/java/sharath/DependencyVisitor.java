@@ -29,7 +29,8 @@
  */
 package sharath;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.*;
 import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.signature.SignatureVisitor;
@@ -48,7 +49,7 @@ import java.util.Set;
  *
  */
 class DependencyVisitor extends ClassVisitor {
-    private static final Logger log = Logger.getLogger(DependencyVisitor.class);
+    private static final Logger log = LogManager.getLogger(DependencyVisitor.class);
 
     Set<String> packages = new HashSet<String>();
 

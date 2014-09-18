@@ -3,7 +3,8 @@ package sharath;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
@@ -20,7 +21,7 @@ import java.util.Map;
 @Singleton
 public class Utils {
 
-    private static final Logger log = Logger.getLogger(Utils.class);
+    private static final Logger log = LogManager.getLogger(Utils.class);
     private CimModule module;
 
     //cwd/app/core/target/classes(test-classes)

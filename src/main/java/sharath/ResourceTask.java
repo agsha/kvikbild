@@ -3,7 +3,8 @@ package sharath;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -16,7 +17,7 @@ import java.util.HashMap;
  * @author sgururaj
  */
 public class ResourceTask {
-    private static final Logger log = Logger.getLogger(ResourceTask.class);
+    private static final Logger log = LogManager.getLogger(ResourceTask.class);
     CimModule module;
     Utils utils;
     External ext;

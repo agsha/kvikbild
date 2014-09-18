@@ -2,7 +2,8 @@ package sharath;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,7 +21,7 @@ import java.util.List;
  * @author sgururaj
  */
 public class External {
-    private static final Logger log = Logger.getLogger(External.class.getName());
+    private static final Logger log = LogManager.getLogger(External.class.getName());
 
     public void mkdir(Path path) throws IOException {
         try {

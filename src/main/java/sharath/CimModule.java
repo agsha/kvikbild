@@ -3,7 +3,8 @@ package sharath;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
@@ -54,7 +55,7 @@ class CimModule {
     static class Factory {
         private Connection conn;
         private JavaCompiler jc;
-        private static final Logger log = Logger.getLogger(Factory.class);
+        private static final Logger log = LogManager.getLogger(Factory.class);
 
 
         @Inject
@@ -89,7 +90,7 @@ class CimModule {
                     srcResource = Paths.get(rs.getString("path"), "src", "main", "resources");
                     destResource = Paths.get(rs.getString("path"), "target", "classes");
                     srcTestResource = Paths.get(rs.getString("path"), "src", "test", "resources");
-                    destTestResource = Paths.get(rs.getString("path"), "tatrge", "test-classes");
+                    destTestResource = Paths.get(rs.getString("path"), "target", "test-classes");
                 }
             } finally {
                 if(ps!=null) ps.close();

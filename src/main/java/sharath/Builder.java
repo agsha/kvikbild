@@ -2,7 +2,8 @@ package sharath;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
@@ -16,7 +17,7 @@ import java.sql.SQLException;
  * @author sgururaj
  */
 public class Builder extends AbstractHandler {
-    private static final Logger log = Logger.getLogger(Builder.class);
+    private static final Logger log = LogManager.getLogger(Builder.class);
     private CompileTask compileTask;
     private ResourceTask resourceTask;
     private ICimServerProvider cimServerProvider;

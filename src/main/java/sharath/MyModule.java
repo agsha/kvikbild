@@ -5,7 +5,8 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Names;
 import org.apache.commons.io.IOUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.server.Server;
 
 import javax.tools.JavaCompiler;
@@ -17,7 +18,7 @@ import java.sql.*;
  * @author sgururaj
  */
 public class MyModule extends AbstractModule {
-    private static final Logger log = Logger.getLogger(MyModule.class);
+    private static final Logger log = LogManager.getLogger(MyModule.class);
 
     @Override
     protected void configure() {

@@ -4,7 +4,8 @@ import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -25,7 +26,7 @@ public class ICimServerProvider implements Provider<ICimServer> {
     CimClassLoader cimClassLoader;
     private Utils.Config cfg;
     private CimModule.AllModules allModules;
-    private static final Logger log = Logger.getLogger(ICimServerProvider.class);
+    private static final Logger log = LogManager.getLogger(ICimServerProvider.class);
 
     @Inject
     public ICimServerProvider(CimClassLoader cimClassLoader, Utils.Config cfg, CimModule.AllModules allModules) {

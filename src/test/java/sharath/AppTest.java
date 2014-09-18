@@ -5,7 +5,8 @@ import com.google.inject.Injector;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Ignore;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ import java.util.Set;
 public class AppTest
     extends TestCase
 {
-    private static final Logger log = Logger.getLogger(AppTest.class.getName());
+    private static final Logger log = LogManager.getLogger();
     private final Utils.Config cfg;
     Injector injector = Guice.createInjector(new MyModule());
     /**
