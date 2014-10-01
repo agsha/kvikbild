@@ -3,6 +3,7 @@ package sharath;
 import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,11 +23,13 @@ import java.util.Set;
 /**
  * @author sgururaj
  */
+@Singleton
 public class ICimServerProvider implements Provider<ICimServer> {
     CimClassLoader cimClassLoader;
     private Utils.Config cfg;
     private CimModule.AllModules allModules;
     private static final Logger log = LogManager.getLogger(ICimServerProvider.class);
+    private ICimServer cimServer;
 
     @Inject
     public ICimServerProvider(CimClassLoader cimClassLoader, Utils.Config cfg, CimModule.AllModules allModules) {
@@ -37,7 +40,7 @@ public class ICimServerProvider implements Provider<ICimServer> {
 
     @Override
     public ICimServer get() {
-        ICimServer server = null;
+        if(cimServer != null) return cimServer;
         Properties prop = new Properties();
         try {
             prop.load(Files.newInputStream(Paths.get(cfg.cwd, "app/core/src/test/resources/properties/build.properties")));
@@ -126,8 +129,8 @@ public class ICimServerProvider implements Provider<ICimServer> {
         } catch (InterruptedException e) {
             log.info(e);
         }
-        server = (ICimServer)cimStarter.uncastedServer;
-        return server;
+        cimServer = (ICimServer)cimStarter.uncastedServer;
+        return cimServer;
     }
 }
 

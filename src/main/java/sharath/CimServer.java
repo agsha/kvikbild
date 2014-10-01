@@ -1,6 +1,8 @@
 package sharath;
 
 import org.apache.jasper.servlet.JspServlet;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.tomcat.InstanceManager;
 import org.apache.tomcat.SimpleInstanceManager;
 import org.eclipse.jetty.annotations.ServletContainerInitializersStarter;
@@ -8,7 +10,6 @@ import org.eclipse.jetty.apache.jsp.JettyJasperInitializer;
 import org.eclipse.jetty.plus.annotation.ContainerInitializer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.webapp.WebAppClassLoader;
 import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.jetty.webapp.WebInfConfiguration;
 import org.eclipse.jetty.webapp.WebXmlConfiguration;
@@ -17,7 +18,6 @@ import java.io.*;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -34,6 +34,7 @@ public class CimServer implements ICimServer {
     String cwd;
     private final String extraClasspath;
     private final URL[] extraUrlPath;
+    private static final Logger log = LogManager.getLogger();
 
     public CimServer(int port, String cwd, String extraClasspath, URL[] extraUrlPath) throws IOException {
         this.port = port;
@@ -98,7 +99,7 @@ public class CimServer implements ICimServer {
         holderJsp.setInitParameter("compilerTargetVM","1.7");
         holderJsp.setInitParameter("compilerSourceVM","1.7");
         holderJsp.setInitParameter("keepgenerated","true");
-        context.addServlet(holderJsp,"*.jsp");
+        context.addServlet(holderJsp, "*.jsp");
 
     }
 
@@ -116,16 +117,14 @@ public class CimServer implements ICimServer {
                 System.out.println("starting jetty server");
                 server.start();
 
-                System.out.println("Jetty is now running");
-                System.out.println((context.getClassPath()));
-                System.out.println("Done restarting.");
-                System.out.println("hiiiiiiii" + context.getClassLoader().loadClass("com.coverity.ces.util.CIMResourceBundleMessageSource") + context.getClassLoader().getParent());
-
+                System.out.println("Finished starting jetty");
                 return;
             }
             System.out.println("Jetty already running, restarting CIM");
             context.stop();
             context.start();
+            System.out.println("Finished restarting cim.");
+
         } finally {
             Thread.currentThread().setContextClassLoader(oldCls);
         }
