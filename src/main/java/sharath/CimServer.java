@@ -106,6 +106,7 @@ public class CimServer implements ICimServer {
 
     @Override
     public void restartCim() throws Exception {
+        long start = System.currentTimeMillis();
         int[][] a ;
         URLClassLoader urlClassLoader = new URLClassLoader(extraUrlPath, getClass().getClassLoader());
         ClassLoader oldCls = Thread.currentThread().getContextClassLoader();
@@ -117,13 +118,13 @@ public class CimServer implements ICimServer {
                 System.out.println("starting jetty server");
                 server.start();
 
-                System.out.println("Finished starting jetty");
+                System.out.println("Finished starting jetty in "+(System.currentTimeMillis()-start)/1000.0+" sec");
                 return;
             }
             System.out.println("Jetty already running, restarting CIM");
             context.stop();
             context.start();
-            System.out.println("Finished restarting cim.");
+            System.out.println("Finished restarting cim in "+(System.currentTimeMillis()-start)/1000.0+" sec");
 
         } finally {
             Thread.currentThread().setContextClassLoader(oldCls);

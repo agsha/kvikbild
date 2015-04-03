@@ -25,9 +25,6 @@ class CimClassLoader extends URLClassLoader {
     @Override
     protected synchronized Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         if(name==null) return null;
-        if(name.contains("CIMResourceBundleMessageSource")) {
-            log.info("hiiiiiiiiiiiii");
-        }
         //log.info(name);
         Class c = null;
         if(name.startsWith("java.")
@@ -110,7 +107,7 @@ class CimClassLoader extends URLClassLoader {
             try {
                 //urlSet.remove(new URL("file:///Users/sgururaj/projects/cim/app/core/target/test-classes/"));
                 //urlSet.remove(new URL("file:///Users/sgururaj/projects/cim/app/core/target/classes/"));
-                urlSet.add(new URL("file:///data00/projects/kvikbild/target/classes/"));
+                urlSet.add(new URL("file:///Users/sgururaj/projects/kvikbild/target/classes/"));
             } catch (MalformedURLException e) {
             }
             log.info(urlSet);
